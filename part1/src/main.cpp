@@ -19,7 +19,7 @@
 #include "Camera.hpp"
 #include "Texture.hpp"
 #include "gravity.hpp"
-#include "scene.hpp"
+#include "world.hpp"
 
 // vvvvvvvvvvvvvvvvvvvvvvvvvv Globals vvvvvvvvvvvvvvvvvvvvvvvvvv
 // Globals generally are prefixed with 'g' in this application.
@@ -627,13 +627,30 @@ bool tryLoadingTexture(std::string path) {
   gTextures[path] = t;
   return true;
 }
-
+#include "glm/ext.hpp"
+#include "glm/gtx/string_cast.hpp"
 /**
 * The entry point into our C++ programs.
 *
 * @return program status
 */
 int main( int argc, char* args[] ){
+
+  // OBJBuilder builder;
+  // addFaceVertices(&builder, {glm::ivec3(0, 0, 0), glm::ivec3(-1, 0, 0)});
+  // for (Face face : builder.model.faces) {
+  //   std::cout << "Face vertex indices: ";
+  //   for (VertexDescriptor vd : face.vertexDescriptors) {
+  //     std::cout << vd.vertex << ", ";
+  //   }
+  //   std::cout << std::endl;
+  // }
+  // std::cout << "Vertices: " << std::endl;
+  // for (glm::vec3 vertex : builder.model.vertices) {
+  //   std::cout << glm::to_string(vertex) << std::endl;
+  // }
+  // //std::cout << glm::to_string(glm::vec3(glm::ivec3(1, 1, 0)) * 0.5f) << std::endl;
+  // return 0;
   std::cout << "Use w and s keys to move forward and back\n";
   std::cout << "Use up and down to change tessellation\n";
   std::cout << "Use 1 to toggle wireframe\n";
@@ -655,6 +672,7 @@ int main( int argc, char* args[] ){
   GravitySimulation simulation(0.0000001);
   Scene scene(&gGraphicsPipelineShaderProgram, &gVertexArrayObjectFloor);
   ProgramSession state(models, &simulation, &scene);
+  RenderWorld world(scene);
   scene.createMesh("loaded", {});
 
   // gravitational anchor
@@ -688,7 +706,16 @@ int main( int argc, char* args[] ){
       tryLoadingTexture(model.mtl.mapKD);
     }
   }
-	
+  Chunk chunk = {{0}};
+  for (int z = 0; z < CHUNK_SIZE; z += 1) {
+    for (int x = 0; x < CHUNK_SIZE; x += 1) {
+      chunk.blocks[z][0][x] = STONE;
+    }
+  }
+	world.setChunk({0, 0, 0}, chunk);
+  world.setRenderOrigin({0, 0, 0});
+  world.setRenderRadius(1);
+  world.updateRenderCache();
 	// 4. Call the main application loop
 	MainLoop(&state);
 
