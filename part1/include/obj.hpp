@@ -1,10 +1,24 @@
 #include <vector>
 #include <string>
 #include <glm/glm.hpp>
+#include <unordered_map>
+#include <bits/stdc++.h>
 
-struct Triangle{
-    glm::vec3 vertices[3]; // 3 vertices per triangle
-};
+namespace std {
+  template<>
+  struct hash<glm::ivec3> {
+    inline size_t operator()(const glm::ivec3& x) const {
+      return x.x * 5 + x.y * 17 + x.z * 37;
+    }
+  };
+
+  template<>
+  struct hash<glm::vec3> {
+    inline size_t operator()(const glm::vec3& x) const {
+      return x.x * 5 + x.y * 17 + x.z * 37;
+    }
+  };
+}
 
 struct VertexDescriptor {
     int vertex;
@@ -25,11 +39,11 @@ struct MTL {
 };
 
 struct OBJModel {
-    std::vector<glm::vec3> vertices;
-    std::vector<glm::vec3> vertexNormals;
-    std::vector<Face> faces;
-    std::vector<TextureCoordinate> textureCoordinates;
-    MTL mtl;
+  std::vector<glm::vec3> vertices;
+  std::vector<glm::vec3> vertexNormals;
+  std::vector<Face> faces;
+  std::vector<TextureCoordinate> textureCoordinates;
+  MTL mtl;
 };
 
 // scale an OBJ from the origin by a certain factor
@@ -45,3 +59,28 @@ bool loadMTL(MTL &mtl, std::string mtlFile);
 OBJModel loadOBJ(std::string path);
 
 OBJModel UNIT_CUBE();
+
+struct OBJBuilder {
+  OBJModel model;
+  // add a vertex to the OBJModel, if it isn't already present
+  // return the index of the vertex
+  int addVertex(glm::vec3 vertex) {
+    std::vector<glm::vec3> &v = model.vertices;
+    auto it = std::find(v.begin(), v.end(), vertex);
+    // if vertex does not already exit, insert it
+    if (it == v.end()) {
+      v.push_back(vertex);
+      return v.size() - 1;
+    }
+    // if vertex does exist, return existing index
+    return it - v.begin();
+  }
+
+  void addSimpleFace(std::vector<glm::vec3> vertices) {
+    std::vector<VertexDescriptor> vertexDescriptors;
+    for (glm::vec3 vertex : vertices) {
+      vertexDescriptors.push_back({addVertex(vertex)});
+    }
+    model.faces.push_back({vertexDescriptors});
+  }
+};
