@@ -16,9 +16,9 @@ std::vector<RenderBlockFace> calculateChunkFaces(Chunk &chunk) {
         }
         // if it is solid, then add faces for each of the air-facing sides
         for (glm::ivec3 direction : ORTHO_DIRS) {
-          // don't add a face if the adjacent block is out of bounds or it is air
+          // don't add a face if the adjacent block is out of bounds or it is not air
           glm::ivec3 neighbor = blockCoordinate + direction;
-          if (!Chunk::inBounds(neighbor) || chunk.getBlock(neighbor) == AIR) {
+          if (!Chunk::inBounds(neighbor) || chunk.getBlock(neighbor) != AIR) {
             continue;
           }
           // add the face represented by a block coordinate and a direction
@@ -59,9 +59,8 @@ void addFaceVertices(OBJBuilder &builder, RenderBlockFace face) {
 
 // TODO: optimize chunk rendering and caching by using an intermediate representation of faces that
 // can be more granularly updates with changes to the chunk
-OBJModel Chunk::calculateChunkVertices() {
+OBJModel Chunk::calculateChunkOBJ() {
   OBJBuilder builder;
-  std::vector<VBOVertex> vertices;
   for (RenderBlockFace face : calculateChunkFaces(*this)) {
     addFaceVertices(builder, face);
   }
@@ -70,34 +69,74 @@ OBJModel Chunk::calculateChunkVertices() {
 
 // set the chunk at specific chunk coordinates
 void World::setChunk(glm::ivec3 chunkCoordinate, Chunk chunk) {
-
+  chunks[chunkCoordinate] = chunk;
 }
+
+// setting a chunk will also erase the cached version
+void RenderWorld::setChunk(glm::ivec3 chunkCoordinate, Chunk chunk) {
+  World::setChunk(chunkCoordinate, chunk);
+  chunksCached.erase(chunkCoordinate);
+  scene.deleteMesh(Chunk::id(chunkCoordinate));
+}
+
 // return the block at specific block coordinates
 char World::getBlock(glm::ivec3 blockCoordinate) {
-  return 0;
+  glm::ivec3 chunkCoordinate = blockCoordinate / CHUNK_SIZE;
+  glm::ivec3 localCoordinate = blockCoordinate - chunkCoordinate * CHUNK_SIZE;
+  return chunks[chunkCoordinate].getBlock(localCoordinate);
 }
 bool World::hasChunk(glm::ivec3 chunkCoordinate) {
-return 0;
+  return chunks.find(chunkCoordinate) != chunks.end();
 }
 bool World::hasBlock(glm::ivec3 blockCoordinate) {
-return 0;
+  glm::ivec3 chunkCoordinate = blockCoordinate / CHUNK_SIZE;
+  return hasChunk(chunkCoordinate);
 }
+
+RenderWorld::RenderWorld(Scene &openGLScene): scene(openGLScene) {}
 
 // set the render origin to the specified block coordinates
 // this is the center of the render sphere
 void RenderWorld::setRenderOrigin(glm::ivec3 blockCoordinate) {
-
+  renderOrigin = blockCoordinate;
 }
 // set the radius of the render sphere, in chunks
 void RenderWorld::setRenderRadius(int chunks) {
-
+  renderRadius = chunks;
 }
-// get the cache of vertices to render
-std::vector<VBOVertex> RenderWorld::getVertexCache() {
-  std::vector<VBOVertex> vertices;
-  return vertices;
-}
+// // get the cache of vertices to render
+// std::vector<VBOVertex> RenderWorld::getVertexCache() {
+//   return worldVertexCache;
+// }
 // update the cache
 void RenderWorld::updateRenderCache() {
-
+  glm::ivec3 originChunk = renderOrigin / CHUNK_SIZE;
+  for (int z = originChunk.z - renderRadius; z < originChunk.z + renderRadius; z += 1) {
+    for (int y = originChunk.y - renderRadius; y < originChunk.y + renderRadius; y += 1) {
+      for (int x = originChunk.x - renderRadius; x < originChunk.x + renderRadius; x += 1) {
+        glm::ivec3 chunkCoordinate = {x, y, z};
+          std::cout << "chunk: " << chunkCoordinate.x << ", " << chunkCoordinate.y  << ", " << chunkCoordinate.z << std::endl;
+        // we only care about chunks within a spherical bubble
+        if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(originChunk)) > renderRadius) {
+          std::cout << "out of chunk render sphere" << std::endl;
+          continue;
+        }
+        // if the chunk is already cached, it must be up to date
+        if (chunksCached.find(chunkCoordinate) != chunksCached.end()) {
+          std::cout << "chunk already cached" << std::endl;
+          continue;
+        }
+        // TODO: if a chunk does not exist, we should generate it instead of skipping it
+        if (!hasChunk(chunkCoordinate)) {
+          std::cout << "chunk does not exist" << std::endl;
+          continue;
+        }
+        
+          std::cout << "rendering chunk!------------" << std::endl;
+        OBJModel model = chunks[chunkCoordinate].calculateChunkOBJ();
+        model.vertexNormals.push_back({0, 0, 0});
+        scene.createMesh(Chunk::id(chunkCoordinate), model);
+      }
+    }
+  }
 }
