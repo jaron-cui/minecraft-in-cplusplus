@@ -27,7 +27,7 @@ const int TRI2[3] = {1, 3, 2};
 // chunks are cubic pieces of the world composed of multiple blocks
 struct Chunk {
   char blocks[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
-  OBJModel calculateChunkVertices();
+  OBJModel calculateChunkOBJ();
   static bool inBounds(glm::ivec3 localBlockCoordinate) {
     int x = localBlockCoordinate.x;
     int y = localBlockCoordinate.y;
@@ -37,14 +37,17 @@ struct Chunk {
   char getBlock(glm::ivec3 localBlockCoordinate) {
     return blocks[localBlockCoordinate.z][localBlockCoordinate.y][localBlockCoordinate.x];
   }
+  static std::string id(glm::ivec3 chunkCoordinate) {
+    return std::to_string(chunkCoordinate.x) + "," + std::to_string(chunkCoordinate.y) + "," + std::to_string(chunkCoordinate.z);
+  }
 };
 
 class World {
-  private:
+  protected:
     std::unordered_map<glm::ivec3, Chunk> chunks;
   public:
     // set the chunk at specific chunk coordinates
-    void setChunk(glm::ivec3 chunkCoordinate, Chunk chunk);
+    virtual void setChunk(glm::ivec3 chunkCoordinate, Chunk chunk);
     // return the block at specific block coordinates
     char getBlock(glm::ivec3 blockCoordinate);
     bool hasChunk(glm::ivec3 chunkCoordinate);
@@ -53,17 +56,21 @@ class World {
 
 class RenderWorld: public World {
   private:
-    std::unordered_map<glm::ivec3, std::vector<VBOVertex>> chunkVertexCache;
-    std::vector<VBOVertex> worldVertexCache;
+    Scene &scene;
+    std::unordered_set<glm::ivec3> chunksCached;
+    //std::vector<VBOVertex> worldVertexCache;
     glm::ivec3 renderOrigin;
+    int renderRadius;
   public:
+    RenderWorld(Scene &scene);
+    void setChunk(glm::ivec3 chunkCoordinate, Chunk chunk);
     // set the render origin to the specified block coordinates
     // this is the center of the render sphere
     void setRenderOrigin(glm::ivec3 blockCoordinate);
     // set the radius of the render sphere, in chunks
     void setRenderRadius(int chunks);
-    // get the cache of vertices to render
-    std::vector<VBOVertex> getVertexCache();
+    // // get the cache of vertices to render
+    // std::vector<VBOVertex> getVertexCache();
     // update the cache
     void updateRenderCache();
 };
