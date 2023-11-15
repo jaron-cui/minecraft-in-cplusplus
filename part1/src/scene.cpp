@@ -141,6 +141,9 @@ Mesh* Scene::getMesh(std::string name) {
 }
 
 void Scene::deleteMesh(std::string name) {
+  if (meshes.find(name) == meshes.end()) {
+    return;
+  }
   meshes[name]->clearBuffers();
   delete &meshes[name];
   meshes.erase(name);
@@ -161,6 +164,9 @@ PointLight* Scene::getLight(std::string name) {
 }
 
 void Scene::deleteLight(std::string name) {
+  if (lights.find(name) == lights.end()) {
+    return;
+  }
   delete &lights[name];
   lights.erase(name);
 }
