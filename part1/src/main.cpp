@@ -19,9 +19,7 @@
 #include "Camera.hpp"
 #include "Texture.hpp"
 #include "gravity.hpp"
-#include "RenderGod.hpp"
-#include "EntityGod.hpp"
-#include "TerrainGod.hpp"
+#include "World.hpp"
 
 // vvvvvvvvvvvvvvvvvvvvvvvvvv Globals vvvvvvvvvvvvvvvvvvvvvvvvvv
 // Globals generally are prefixed with 'g' in this application.

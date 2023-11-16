@@ -65,6 +65,8 @@ class Entity {
     float theta;
     int health;
     Hitbox hitbox = {{1, 1, 1}};
+    glm::vec3 nextStep;
+    bool jumping;
   public:
     Entity() {}
     Entity(std::string entityName, glm::vec3 initialPosition, float facing, glm::vec3 initialVelocity);
@@ -76,6 +78,10 @@ class Entity {
     void setPosition(glm::vec3 to);
     void setVelocity(glm::vec3 to);
     void accelerate(glm::vec3 acceleration);
+    // add acceleration of the entity by the feet for the next update
+    void step(glm::vec3 impulse);
+    // tell the entity to jump during the next update
+    void jump();
     Hitbox getHitbox();
     virtual OBJModel getModel();
     friend class EntityGod;
@@ -134,5 +140,39 @@ class God {
     // set the radius of the god's domain
     void setRadius(int chunks);
 };
+
+class EntityGod: public God {
+  public:
+    EntityGod(World &world);
+    void update() override;
+    bool seesEntity(std::string name);
+    void createEntity(Entity entity);
+    void removeEntity(std::string name);
+    Entity getEntity(std::string name);
+};
+
+class TerrainGod: public God {
+  public:
+    TerrainGod(World &world);
+    void generateSpawn();
+};
+
+class RenderGod: public God {
+  private:
+    Scene &scene;
+  public:
+    RenderGod(World &world, Scene &scene);
+    void setChunk(glm::ivec3 chunkCoordinate, Chunk chunk);
+    // update the cache
+    void update() override;
+};
+
+struct RenderBlockFace {
+  glm::ivec3 blockCoordinate;
+  glm::ivec3 facing;
+};
+
+// TODO: remove
+void addFaceVertices(OBJBuilder* builder, RenderBlockFace face);
 
 #endif
