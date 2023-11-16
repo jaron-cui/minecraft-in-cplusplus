@@ -17,6 +17,10 @@ class God {
     void update();
 };
 
+struct Hitbox {
+  float width, height;
+};
+
 class Entity {
   protected:
     std::string name;
@@ -29,14 +33,18 @@ class Entity {
     // update the entity's position, behavior, etc...
     void update(World &world);
     std::string getName() const;
+    glm::vec3 getPosition();
+    glm::vec3 getVelocity();
     void setPosition(glm::vec3 to);
     void setVelocity(glm::vec3 to);
     void accelerate(glm::vec3 acceleration);
+    virtual Hitbox getHitbox();
     virtual OBJModel getModel();
     friend class EntityGod;
 };
 
 class Player: public Entity {
+  Hitbox getHitbox() override;
   OBJModel getModel() override;
 };
 
