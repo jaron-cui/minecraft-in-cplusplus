@@ -22,11 +22,17 @@ void Camera::MouseLook(int mouseX, int mouseY){
 
     // Detect how much the mouse has moved since the last time
     int dx = newMousePosition[0] - m_oldMousePosition[0];
+    int dy = newMousePosition[1] - m_oldMousePosition[1];
+    yawDegrees -= dx * PAN_FACTOR;
+    pitchDegrees += dy * PAN_FACTOR;
+    pitchDegrees = std::max(-180.0f, std::min(180.0f, pitchDegrees));
 
     // Rotate about the upVector
     glm::mat4 rotation(1);
-    rotation = glm::rotate(rotation, glm::radians(dx * -PAN_FACTOR), m_upVector);
-    m_viewDirection = glm::vec3(rotation * glm::vec4(m_viewDirection, 1.0));
+    glm::mat4 pitchRotation = glm::rotate(rotation, glm::radians(pitchDegrees), glm::cross({0, 1.0, 0}, m_viewDirection));
+    glm::mat4 yawRotation = glm::rotate(pitchRotation, glm::radians(yawDegrees), {0, 1, 0});
+    m_viewDirection = glm::vec3(yawRotation * glm::vec4(1.0, 0.0, 0.0, 1.0));
+
 
     // Update our old position after we have made changes 
     m_oldMousePosition = newMousePosition;
@@ -98,6 +104,8 @@ Camera::Camera(){
     m_viewDirection = glm::vec3(0.0f, 0.0f, 1.0f);
 	// For now--our upVector always points up along the z-axis
     m_upVector = glm::vec3(0.0f, 1.0f, 0.0f);
+    pitchDegrees = 0;
+    yawDegrees = 0;
 }
 
 glm::mat4 Camera::GetViewMatrix() const{
