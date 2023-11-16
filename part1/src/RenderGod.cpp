@@ -40,19 +40,19 @@ void addFaceVertices(OBJBuilder &builder, RenderBlockFace face) {
   int vertexDirection = face.facing.x | face.facing.y | face.facing.z;
   int zero1 = face.facing.x ? face.facing.y ? 2 : 1 : 0;
   int zero2 = (face.facing.y || face.facing.x) ? 2 : 1;
-  std::cout << "zeroes: " << zero1 << ", " << zero2 << " verdir: " << vertexDirection << std::endl;
+  // std::cout << "zeroes: " << zero1 << ", " << zero2 << " verdir: " << vertexDirection << std::endl;
   int corner[3] = {face.facing.x, face.facing.y, face.facing.z};
   // iterate through 3 indices
-  for (int i = 0, _i = 0; _i < 3; i += vertexDirection, _i += 1) {
+  for (int i = vertexDirection < 0 ? 2 : 0, _i = 0; _i < 3; i += vertexDirection, _i += 1) {
     glm::ivec2 offset1 = SQUARE_OFFSETS[TRI1[i % 3]];
     glm::ivec2 offset2 = SQUARE_OFFSETS[TRI2[i % 3]];
     corner[zero1] = offset1.x;
     corner[zero2] = offset1.y;
-    std::cout << "offset index: " << i % 3 << std::endl;
-    vertices[_i] = (glm::vec3(corner[0], corner[1], corner[2]) * 0.5f + origin) * BLOCK_SCALE;
+    // std::cout << "offset index: " << i % 3 << std::endl;
+    vertices[_i] = (glm::vec3(corner[0], corner[1], corner[2]) * 0.5f + origin);
     corner[zero1] = offset2.x;
     corner[zero2] = offset2.y;
-    vertices[3 + _i] = (glm::vec3(corner[0], corner[1], corner[2]) * 0.5f + origin) * BLOCK_SCALE;
+    vertices[3 + _i] = (glm::vec3(corner[0], corner[1], corner[2]) * 0.5f + origin);
   }
   builder.addSimpleFace(vertices);
 }
@@ -82,7 +82,8 @@ RenderGod::RenderGod(World &world, Scene &openGLScene): God(world), scene(openGL
 // }
 // update the cache
 void RenderGod::update() {
-  glm::ivec3 originChunk = origin / CHUNK_SIZE;
+  int chunkCount = 0;
+  glm::ivec3 originChunk = World::blockToChunkCoordinate(origin);
   for (int z = originChunk.z - radius; z < originChunk.z + radius; z += 1) {
     for (int y = originChunk.y - radius; y < originChunk.y + radius; y += 1) {
       for (int x = originChunk.x - radius; x < originChunk.x + radius; x += 1) {
@@ -103,12 +104,13 @@ void RenderGod::update() {
           std::cout << "chunk does not exist" << std::endl;
           continue;
         }
-        
+        chunkCount += 1;
           std::cout << "rendering chunk!------------" << std::endl;
-        OBJModel model = world.getChunk(chunkCoordinate).calculateChunkOBJ();
+        OBJModel model = scaleOBJ(offsetOBJ(world.getChunk(chunkCoordinate).calculateChunkOBJ(), glm::vec3(chunkCoordinate * CHUNK_SIZE) + glm::vec3(0, -1, 0)), BLOCK_SCALE);
         model.vertexNormals.push_back({0, 0, 0});
         scene.createMesh(Chunk::id(chunkCoordinate), model);
       }
     }
   }
+  std::cout <<"Rendering THIS MANY CHUNKS: " << chunkCount << std::endl;
 }

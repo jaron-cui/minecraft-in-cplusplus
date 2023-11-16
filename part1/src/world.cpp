@@ -9,9 +9,12 @@ void World::setChunk(glm::ivec3 chunkCoordinate, Chunk chunk) {
 
 // return the block at specific block coordinates
 char World::getBlock(glm::ivec3 blockCoordinate) {
-  glm::ivec3 chunkCoordinate = blockCoordinate / CHUNK_SIZE;
+  glm::ivec3 chunkCoordinate = World::blockToChunkCoordinate(blockCoordinate);
   glm::ivec3 localCoordinate = blockCoordinate - chunkCoordinate * CHUNK_SIZE;
-  return chunks[chunkCoordinate].getBlock(localCoordinate);
+  // if (!hasChunk(chunkCoordinate)) {
+  //   std::cout << "CHUNK DOES NOT EXIST" << std::endl;
+  // }
+  return getChunk(chunkCoordinate).getBlock(localCoordinate);
 }
 
 Chunk& World::getChunk(glm::ivec3 chunkCoordinate) {
@@ -22,12 +25,12 @@ bool World::hasChunk(glm::ivec3 chunkCoordinate) {
   return chunks.find(chunkCoordinate) != chunks.end();
 }
 bool World::hasBlock(glm::ivec3 blockCoordinate) {
-  glm::ivec3 chunkCoordinate = blockCoordinate / CHUNK_SIZE;
+  glm::ivec3 chunkCoordinate = World::blockToChunkCoordinate(blockCoordinate);
   return hasChunk(chunkCoordinate);
 }
 
 glm::ivec3 World::blockToChunkCoordinate(glm::ivec3 blockCoordinate) {
-  return blockCoordinate / CHUNK_SIZE;
+  return glm::ivec3(glm::floor(glm::vec3(blockCoordinate) / float(CHUNK_SIZE)));
 }
 
 void God::setOrigin(glm::ivec3 blockCoordinate) {
