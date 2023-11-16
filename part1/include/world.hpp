@@ -52,7 +52,7 @@ struct Chunk {
 };
 
 struct Hitbox {
-  float width, height;
+  glm::vec3 dimensions;
 };
 
 class World;
@@ -64,8 +64,9 @@ class Entity {
     glm::vec3 velocity;
     float theta;
     int health;
+    Hitbox hitbox = {{1, 1, 1}};
   public:
-    Entity() {};
+    Entity() {}
     Entity(std::string entityName, glm::vec3 initialPosition, float facing, glm::vec3 initialVelocity);
     // update the entity's position, behavior, etc...
     virtual void update(World &world);
@@ -75,14 +76,16 @@ class Entity {
     void setPosition(glm::vec3 to);
     void setVelocity(glm::vec3 to);
     void accelerate(glm::vec3 acceleration);
-    virtual Hitbox getHitbox();
+    Hitbox getHitbox();
     virtual OBJModel getModel();
     friend class EntityGod;
 };
 
 class Player: public Entity {
-  Hitbox getHitbox() override;
-  OBJModel getModel() override;
+  public:
+    Player(std::string entityName, glm::vec3 initialPosition, float facing, glm::vec3 initialVelocity);
+    //TODO: remember that overriding doesn't work unless we pass pointers. Slicing!
+    OBJModel getModel() override;
 };
 
 class World {
@@ -90,6 +93,10 @@ class World {
     std::unordered_map<glm::ivec3, Chunk> chunks;
     std::unordered_map<std::string, Entity> entities;
   public:
+    World() {
+      std::cout << "Chunks: " << chunks.size() << std::endl;
+      std::cout << "Entities: " << entities.size() << std::endl;
+    }
     // set the chunk at specific chunk coordinates
     virtual void setChunk(glm::ivec3 chunkCoordinate, Chunk chunk);
     // return the block at specific block coordinates
@@ -99,6 +106,7 @@ class World {
     bool hasBlock(glm::ivec3 blockCoordinate);
     static glm::ivec3 blockToChunkCoordinate(glm::ivec3 blockCoordinate);
     friend class EntityGod;
+    friend class TerrainGod;
 };
 
 /**
