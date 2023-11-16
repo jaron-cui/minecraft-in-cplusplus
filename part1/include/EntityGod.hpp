@@ -4,6 +4,8 @@
 // there is the render god, the entity god, the terrain god
 class God {
   protected:
+    // the world of the god
+    World &world;
     // all the chunks which this god knows of
     std::unordered_set<glm::ivec3> realm;
     // the center of the god's domain
@@ -26,11 +28,12 @@ class Entity {
     Entity(std::string entityName, glm::vec3 initialPosition, float facing, glm::vec3 initialVelocity);
     // update the entity's position, behavior, etc...
     void update(World &world);
-    std::string getName();
+    std::string getName() const;
     void setPosition(glm::vec3 to);
     void setVelocity(glm::vec3 to);
     void accelerate(glm::vec3 acceleration);
     virtual OBJModel getModel();
+    friend class EntityGod;
 };
 
 class Player: public Entity {
@@ -39,6 +42,7 @@ class Player: public Entity {
 
 class EntityGod: public God {
   public:
+    bool seesEntity(std::string name);
     void createEntity(Entity entity);
     void removeEntity(std::string name);
 };

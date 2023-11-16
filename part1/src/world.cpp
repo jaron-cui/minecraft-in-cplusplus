@@ -85,12 +85,21 @@ char World::getBlock(glm::ivec3 blockCoordinate) {
   glm::ivec3 localCoordinate = blockCoordinate - chunkCoordinate * CHUNK_SIZE;
   return chunks[chunkCoordinate].getBlock(localCoordinate);
 }
+
+Chunk& World::getChunk(glm::ivec3 chunkCoordinate) {
+  return chunks[chunkCoordinate];
+}
+
 bool World::hasChunk(glm::ivec3 chunkCoordinate) {
   return chunks.find(chunkCoordinate) != chunks.end();
 }
 bool World::hasBlock(glm::ivec3 blockCoordinate) {
   glm::ivec3 chunkCoordinate = blockCoordinate / CHUNK_SIZE;
   return hasChunk(chunkCoordinate);
+}
+
+static glm::ivec3 blockToChunkCoordinate(glm::ivec3 blockCoordinate) {
+  return blockCoordinate / CHUNK_SIZE;
 }
 
 RenderWorld::RenderWorld(Scene &openGLScene): scene(openGLScene) {}

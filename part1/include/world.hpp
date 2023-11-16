@@ -1,4 +1,3 @@
-#include <unordered_map>
 #include <glm/glm.hpp>
 #include <vector>
 #include "scene.hpp"
@@ -27,6 +26,8 @@ const int TRI2[3] = {1, 3, 2};
 // chunks are cubic pieces of the world composed of multiple blocks
 struct Chunk {
   char blocks[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
+  std::unordered_set<Entity> entities;
+
   OBJModel calculateChunkOBJ();
   static bool inBounds(glm::ivec3 localBlockCoordinate) {
     int x = localBlockCoordinate.x;
@@ -50,8 +51,10 @@ class World {
     virtual void setChunk(glm::ivec3 chunkCoordinate, Chunk chunk);
     // return the block at specific block coordinates
     char getBlock(glm::ivec3 blockCoordinate);
+    Chunk& getChunk(glm::ivec3 chunkCoordinate);
     bool hasChunk(glm::ivec3 chunkCoordinate);
     bool hasBlock(glm::ivec3 blockCoordinate);
+    static glm::ivec3 blockToChunkCoordinate(glm::ivec3 blockCoordinate);
 };
 
 class RenderWorld: public World {
