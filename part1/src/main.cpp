@@ -21,6 +21,7 @@
 #include "gravity.hpp"
 #include "RenderGod.hpp"
 #include "EntityGod.hpp"
+#include "TerrainGod.hpp"
 
 // vvvvvvvvvvvvvvvvvvvvvvvvvv Globals vvvvvvvvvvvvvvvvvvvvvvvvvv
 // Globals generally are prefixed with 'g' in this application.
@@ -447,7 +448,7 @@ void setModel(Scene* scene, OBJModel model) {
 *
 * @return void
 */
-void Input(Scene* scene, std::vector<OBJModel> models){
+void Input(Scene* scene, std::vector<OBJModel> models, EntityGod &entityGod){
     // Two static variables to hold the mouse position
     static int mouseX=gScreenWidth/2;
     static int mouseY=gScreenHeight/2; 
@@ -507,6 +508,10 @@ void Input(Scene* scene, std::vector<OBJModel> models){
     if (state[SDL_SCANCODE_D]) {
         gCamera.MoveRight(0.1f);
     }
+    if (state[SDL_SCANCODE_RIGHT]) {
+      SDL_Delay(100);
+      entityGod.update();
+    }
 
     for (int numberKey = SDL_SCANCODE_1; numberKey < SDL_SCANCODE_0; numberKey += 1) {
       if (state[numberKey]) {
@@ -553,7 +558,7 @@ class ProgramSession {
     GravitationalBody sun = gravitySimulation->getBody("sun");
 
     scene->getMesh("planet1")->setPosition(planet1.position);
-    scene->getMesh("sun")->setPosition(sun.position);
+    //scene->getMesh("sun")->setPosition(sun.position);
     scene->getMesh("planet2")->setPosition(planet2.position);
 
     scene->getLight("planet1")->lightPos = planet1.position;
@@ -572,7 +577,7 @@ void printVec(glm::vec3 vec) {
 *
 * @return void
 */
-void MainLoop(ProgramSession* state){
+void MainLoop(ProgramSession* state, EntityGod &entityGod){
     // Little trick to map mouse to center of screen always. Useful for handling 'mouselook'
     // This works because we effectively 're-center' our mouse at the start of every frame prior to detecting any mouse motion.
     SDL_WarpMouseInWindow(gGraphicsApplicationWindow,gScreenWidth/2,gScreenHeight/2);
@@ -581,9 +586,11 @@ void MainLoop(ProgramSession* state){
 	// While application is running
 	while(!gQuit){
 		// Handle Input
-		Input(state->scene, state->models);
+		Input(state->scene, state->models, entityGod);
 		// Setup anything (i.e. OpenGL State) that needs to take place before draw calls
     state->tick();
+    glm::vec3 pos = entityGod.getEntity("player").getPosition();
+    gCamera.SetCameraEyePosition(pos.x, pos.y, pos.z);
 		PreDraw(state->scene);
 		// Draw Calls in OpenGL
 		Draw(state->scene);
@@ -675,14 +682,20 @@ int main( int argc, char* args[] ){
   ProgramSession state(models, &simulation, &scene);
   World world;
   RenderGod renderer(world, scene);
+  TerrainGod generator(world);
+  EntityGod entityManager(world);
+  generator.generateSpawn();
+  std::cout << "chunks: " << world.hasChunk({0, 0, 0}) << std::endl;
+  entityManager.createEntity(Player("player", {0, 0, 0}, 0, {0, 0, 0}));
+  std::cout << "chunks: " << world.hasChunk({0, 0, 0}) << std::endl;
   scene.createMesh("loaded", {});
 
   // gravitational anchor
   GravitationalBody sun = {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 100};
   simulation.addBody("sun", &sun);
   PointLight sunLight = {{0.8f, 0.7f, 0.6f}, {0.0f, 10.0f, 0.0f}, 0.6, 0.5};
-  scene.createMesh("sun", model);
-  scene.getMesh("sun")->setScale(.1);
+  //scene.createMesh("sun", model);
+  // scene.getMesh("sun")->setScale(.1);
   scene.createLight("sun", sunLight);
   // close glowing planet
   GravitationalBody planet1 = {{1.3f, -0.1f, 0.0f}, {0.0f, 0.0005f, 0.002f}, 0.5};
@@ -708,18 +721,13 @@ int main( int argc, char* args[] ){
       tryLoadingTexture(model.mtl.mapKD);
     }
   }
-  Chunk chunk = {{0}};
-  for (int z = 0; z < CHUNK_SIZE; z += 1) {
-    for (int x = 0; x < CHUNK_SIZE; x += 1) {
-      chunk.blocks[z][0][x] = STONE;
-    }
-  }
-	world.setChunk({0, 0, 0}, chunk);
+
   renderer.setOrigin({0, 0, 0});
-  renderer.setRadius(1);
+  std::cout << "chunks: " << world.hasChunk({0, 0, 0}) << std::endl;
+  renderer.setRadius(5);
   renderer.update();
 	// 4. Call the main application loop
-	MainLoop(&state);
+	MainLoop(&state, entityManager);
 
 	// 5. Call the cleanup function when our program terminates
 	CleanUp();
