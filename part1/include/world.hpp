@@ -1,6 +1,10 @@
-#include <glm/glm.hpp>
-#include <vector>
+#ifndef WORLD_H
+#define WORLD_H
 #include "scene.hpp"
+
+/**
+ *  ---------- Global Constants ----------
+ */
 
 // chunk coordinates * CHUNK_SIZE = block coordinates of the (0, 0, 0) corner of the chunk
 const int CHUNK_SIZE = 16;
@@ -23,10 +27,14 @@ const glm::ivec2 SQUARE_OFFSETS[4] = {{-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
 const int TRI1[3] = {0, 1, 2};
 const int TRI2[3] = {1, 3, 2};
 
+/**
+ *  ---------- World Representation ----------
+ */
+
 // chunks are cubic pieces of the world composed of multiple blocks
 struct Chunk {
   char blocks[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
-  std::unordered_set<Entity> entities;
+  std::unordered_set<std::string> entityNames;
 
   OBJModel calculateChunkOBJ();
   static bool inBounds(glm::ivec3 localBlockCoordinate) {
@@ -43,9 +51,44 @@ struct Chunk {
   }
 };
 
+struct Hitbox {
+  float width, height;
+};
+
+class World;
+
+class Entity {
+  protected:
+    std::string name;
+    glm::vec3 position;
+    glm::vec3 velocity;
+    float theta;
+    int health;
+  public:
+    Entity() {};
+    Entity(std::string entityName, glm::vec3 initialPosition, float facing, glm::vec3 initialVelocity);
+    // update the entity's position, behavior, etc...
+    virtual void update(World &world);
+    std::string getName() const;
+    glm::vec3 getPosition();
+    glm::vec3 getVelocity();
+    void setPosition(glm::vec3 to);
+    void setVelocity(glm::vec3 to);
+    void accelerate(glm::vec3 acceleration);
+    virtual Hitbox getHitbox();
+    virtual OBJModel getModel();
+    friend class EntityGod;
+};
+
+class Player: public Entity {
+  Hitbox getHitbox() override;
+  OBJModel getModel() override;
+};
+
 class World {
   protected:
     std::unordered_map<glm::ivec3, Chunk> chunks;
+    std::unordered_map<std::string, Entity> entities;
   public:
     // set the chunk at specific chunk coordinates
     virtual void setChunk(glm::ivec3 chunkCoordinate, Chunk chunk);
@@ -55,33 +98,33 @@ class World {
     bool hasChunk(glm::ivec3 chunkCoordinate);
     bool hasBlock(glm::ivec3 blockCoordinate);
     static glm::ivec3 blockToChunkCoordinate(glm::ivec3 blockCoordinate);
+    friend class EntityGod;
 };
 
-class RenderWorld: public World {
-  private:
-    Scene &scene;
-    std::unordered_set<glm::ivec3> chunksCached;
-    //std::vector<VBOVertex> worldVertexCache;
-    glm::ivec3 renderOrigin;
-    int renderRadius;
+/**
+ *  ---------- The Gods ----------
+ */
+
+// gods manage the affairs of a set of chunks within a world
+// there is the render god, the entity god, the terrain god
+class God {
+  protected:
+    // the world of the god
+    World &world;
+    // all the chunks which this god knows of
+    std::unordered_set<glm::ivec3> realm;
+    // the center of the god's domain
+    glm::ivec3 origin;
+    // the radius of the god's domain
+    int radius;
   public:
-    RenderWorld(Scene &scene);
-    void setChunk(glm::ivec3 chunkCoordinate, Chunk chunk);
-    // set the render origin to the specified block coordinates
-    // this is the center of the render sphere
-    void setRenderOrigin(glm::ivec3 blockCoordinate);
-    // set the radius of the render sphere, in chunks
-    void setRenderRadius(int chunks);
-    // // get the cache of vertices to render
-    // std::vector<VBOVertex> getVertexCache();
-    // update the cache
-    void updateRenderCache();
+    God(World &world): world(world) {}
+    // progress this god's actions
+    virtual void update();
+    // set this god's origin
+    void setOrigin(glm::ivec3 blockCoordinate);
+    // set the radius of the god's domain
+    void setRadius(int chunks);
 };
 
-struct RenderBlockFace {
-  glm::ivec3 blockCoordinate;
-  glm::ivec3 facing;
-};
-
-// TODO: remove
-void addFaceVertices(OBJBuilder* builder, RenderBlockFace face);
+#endif

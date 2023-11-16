@@ -1,28 +1,5 @@
 #include "EntityGod.hpp"
 
-// gods manage the affairs of a set of chunks within a world
-// there is the render god, the entity god, the terrain god
-// class God {
-//   protected:
-//     // all the chunks which this god knows of
-//     std::unordered_set<glm::ivec3> realm;
-//     // the center of the god's domain
-//     glm::ivec3 origin;
-//     // the radius of the god's domain
-//     int radius;
-//   public:
-//     // progress this god's actions
-//     void update();
-// };
-
-// class Entity {
-//   protected:
-//     std::string name;
-//     glm::vec3 position;
-//     glm::vec3 velocity;
-//     float theta;
-//     int health;
-//   public:
 Entity::Entity(std::string entityName, glm::vec3 initialPosition, float facing, glm::vec3 initialVelocity) {
   name = entityName;
   position = initialPosition;
@@ -89,6 +66,9 @@ void findNextCollision(Entity &entity, World &world, float &collisionTime, glm::
       blockCoordinate = nextBlock;
     }
   }
+  if (collisionTime < 1) {
+    reactionForce = -entity.getVelocity();
+  }
 }
 
 // update the entity's position, behavior, etc...
@@ -153,8 +133,10 @@ OBJModel Player::getModel() {
 }
 
 void EntityGod::createEntity(Entity entity) {
-  Chunk &chunk = world.getChunk(World::blockToChunkCoordinate(entity.position));
-  chunk.entities.insert(entity);
+  // TODO: add name check
+  world.entities[entity.name] = entity;
+  Chunk &chunk = world.getChunk(World::blockToChunkCoordinate(glm::ivec3(entity.position)));
+  chunk.entityNames.insert(entity.name);
 }
 
 struct entityNameEquals : public std::unary_function<Entity, bool> {
@@ -164,19 +146,13 @@ struct entityNameEquals : public std::unary_function<Entity, bool> {
 };
 
 bool EntityGod::seesEntity(std::string name) {
-  for (glm::ivec3 chunkCoordinate : realm) {
-    Chunk &chunk = world.getChunk(chunkCoordinate);
-    auto it = std::find_if(chunk.entities.begin(), chunk.entities.end(), entityNameEquals(name));
-    if (it != chunk.entities.end()) {
-      return true;
-    }
-  }
-  return false;
+  return world.entities.find(name) != world.entities.end();
 }
 
 void EntityGod::removeEntity(std::string name) {
   for (glm::ivec3 chunkCoordinate : realm) {
     Chunk &chunk = world.getChunk(chunkCoordinate);
-    std::remove_if(chunk.entities.begin(), chunk.entities.end(), entityNameEquals(name));
+    chunk.entityNames.erase(name);
   }
+  world.entities.erase(name);
 }

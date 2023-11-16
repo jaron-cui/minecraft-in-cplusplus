@@ -19,7 +19,8 @@
 #include "Camera.hpp"
 #include "Texture.hpp"
 #include "gravity.hpp"
-#include "world.hpp"
+#include "RenderGod.hpp"
+#include "EntityGod.hpp"
 
 // vvvvvvvvvvvvvvvvvvvvvvvvvv Globals vvvvvvvvvvvvvvvvvvvvvvvvvv
 // Globals generally are prefixed with 'g' in this application.
@@ -672,7 +673,8 @@ int main( int argc, char* args[] ){
   GravitySimulation simulation(0.0000001);
   Scene scene(&gGraphicsPipelineShaderProgram, &gVertexArrayObjectFloor);
   ProgramSession state(models, &simulation, &scene);
-  RenderWorld world(scene);
+  World world;
+  RenderGod renderer(world, scene);
   scene.createMesh("loaded", {});
 
   // gravitational anchor
@@ -713,9 +715,9 @@ int main( int argc, char* args[] ){
     }
   }
 	world.setChunk({0, 0, 0}, chunk);
-  world.setRenderOrigin({0, 0, 0});
-  world.setRenderRadius(1);
-  world.updateRenderCache();
+  renderer.setOrigin({0, 0, 0});
+  renderer.setRadius(1);
+  renderer.update();
 	// 4. Call the main application loop
 	MainLoop(&state);
 
