@@ -494,24 +494,22 @@ void Input(Scene* scene, std::vector<OBJModel> models, EntityGod &entityGod){
 
     // Camera
     // Update our position of the camera
-    float speed = 0.001;
-    glm::vec3 forwardStep = glm::normalize(gCamera.getDirection() * glm::vec3(1, 0, 1)) * speed;
+    float acceleration = 0.008;
+    glm::vec3 forwardStepDirection = glm::normalize(gCamera.getDirection() * glm::vec3(1, 0, 1));
+    glm::vec3 cumulativeDirection = glm::vec3(0, 0, 0);
     if (state[SDL_SCANCODE_W]) {
-      entityGod.getEntity("player").step(forwardStep);
-        //gCamera.MoveForward(0.1f);
+      cumulativeDirection += forwardStepDirection;
     }
     if (state[SDL_SCANCODE_S]) {
-      entityGod.getEntity("player").step(-forwardStep);
-        //gCamera.MoveBackward(0.1f);
+      cumulativeDirection -= forwardStepDirection;
     }
     if (state[SDL_SCANCODE_A]) {
-      entityGod.getEntity("player").step(glm::vec3(forwardStep.z, 0, -forwardStep.x));
-        //gCamera.MoveLeft(0.1f);
+      cumulativeDirection += glm::vec3(forwardStepDirection.z, 0, -forwardStepDirection.x);
     }
     if (state[SDL_SCANCODE_D]) {
-      entityGod.getEntity("player").step(glm::vec3(-forwardStep.z, 0, forwardStep.x));
-        //gCamera.MoveRight(0.1f);
+      cumulativeDirection += glm::vec3(-forwardStepDirection.z, 0, forwardStepDirection.x);
     }
+    entityGod.getEntity("player").step(glm::normalize(cumulativeDirection) * acceleration);
     if (state[SDL_SCANCODE_SPACE]) {
       entityGod.getEntity("player").jump();
     }

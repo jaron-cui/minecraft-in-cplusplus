@@ -92,13 +92,13 @@ void otherAxes(glm::ivec3 axis, glm::ivec3 &r1, glm::ivec3 &r2) {
 float roundTieDown(float x) {
   int base = std::floor(x);
   float diff = x - base;
-  return diff > 0.5f ? base + 1 : base;
+  return diff > 0.5000001f ? base + 1 : base;
 }
 
 float roundTieUp(float x) {
   int base = std::floor(x);
   float diff = x - base;
-  return diff < 0.5f ? base : base + 1;
+  return diff < 0.4999999f ? base : base + 1;
 }
 
 // check a wall of blocks in the direction of a specific axis for collisions
@@ -250,10 +250,10 @@ void Entity::update(World &world) {
 
   std::cout << "P: (" << position.x << ", " << position.y << ", " << position.z << ")"<< std::endl;
   // gravity
-  accelerate({0, -0.001, 0});
+  accelerate({0, -0.006, 0});
   // player motion
   //accelerate(nextStep);
-  float maxSpeed = 0.03;
+  float maxSpeed = 0.07;
   if (axisValue(nextStep)) {
     glm::vec3 walkDirection = glm::normalize(nextStep);
     glm::vec3 cap = walkDirection * maxSpeed;
@@ -296,7 +296,7 @@ void Entity::update(World &world) {
     glm::vec3 jumpForce(0);
     if (reactionForce.y > 0) {
       if (jumping) {
-        jumpForce += glm::vec3(0, 0.08, 0);
+        jumpForce += glm::vec3(0, 0.12, 0);
       }
       // std::cout << "acceleratin'" << std::endl;
     }
@@ -310,8 +310,12 @@ void Entity::update(World &world) {
       float s = axisValue(glm::vec3(ortho1) * velocity);
       float t = axisValue(glm::vec3(ortho2) * velocity);
       float theta = atan2(t, s);
-      float r = abs(axisValue(reactionForce * glm::vec3(axis)));
-      float f = glm::min(r * 0.6f, glm::length(velocity));
+      float r = axisValue(reactionForce * glm::vec3(axis));
+      // skip friction for the head. it's weird how much it slows you down.
+      if (r < 0) {
+        continue;
+      }
+      float f = glm::min(r * 0.4f, glm::length(velocity));
 
       frictionForce -= glm::vec3(ortho1) * f * cos(theta);
       frictionForce -= glm::vec3(ortho2) * f * sin(theta);
@@ -361,7 +365,7 @@ OBJModel Entity::getModel() {
 
 Player::Player(std::string entityName, glm::vec3 initialPosition, float facing, glm::vec3 initialVelocity):
 Entity(entityName, initialPosition, facing, initialVelocity) {
-  hitbox = {{2, 2, 2}};//{{12.0/16, 30.0/32, 12.0/16}};
+  hitbox = {{12.0/16, 30.0/32, 12.0/16}};
 }
 
 OBJModel Player::getModel() {
