@@ -114,7 +114,7 @@ bool checkDirectionForCollision(Hitbox hitbox, glm::vec3 origin, glm::vec3 veloc
   //   axisValue(blockBoundaryPosition * glm::vec3(axis)),
   //   axisVelocity >= 0
   //   );
-  int axisPosition = std::round(axisValue(blockBoundaryPosition * glm::vec3(axis)));
+  int axisPosition = roundDirectionally(axisValue(blockBoundaryPosition * glm::vec3(axis)), axisVelocity > 0);
   int axisDirection = axisVelocity >= 0 ? 1 : -1;
   glm::vec3 hitboxTopRight = blockBoundaryPosition + hitbox.dimensions * 0.5f;
   glm::vec3 hitboxBottomLeft = blockBoundaryPosition - hitbox.dimensions * 0.5f;
@@ -302,19 +302,21 @@ void Entity::update(World &world) {
     }
     // friction
     glm::vec3 frictionForce(0);
-    // glm::ivec3 ortho1, ortho2;
-    // for (glm::ivec3 axis : {POSX, POSY, POSZ}) {
-    //   otherAxes(axis, ortho1, ortho2);
-    //   float s = axisValue(glm::vec3(ortho1) * velocity);
-    //   float t = axisValue(glm::vec3(ortho2) * velocity);
-    //   float theta = atan2(t, s);
-    //   float r = axisValue(reactionForce * glm::vec3(axis));
-    //   float f = glm::min(r * 0.6f, glm::length(velocity));
+    glm::ivec3 ortho1, ortho2;
+    // removed x and z axis friction calculations because it was being weird and isn't
+    // a huge priority
+    for (glm::ivec3 axis : {POSY}) {
+      otherAxes(axis, ortho1, ortho2);
+      float s = axisValue(glm::vec3(ortho1) * velocity);
+      float t = axisValue(glm::vec3(ortho2) * velocity);
+      float theta = atan2(t, s);
+      float r = abs(axisValue(reactionForce * glm::vec3(axis)));
+      float f = glm::min(r * 0.6f, glm::length(velocity));
 
-    //   frictionForce -= glm::vec3(ortho1) * f * cos(theta);
-    //   frictionForce -= glm::vec3(ortho2) * f * sin(theta);
-    //   // TODO: maybe implement friction maximum
-    // }
+      frictionForce -= glm::vec3(ortho1) * f * cos(theta);
+      frictionForce -= glm::vec3(ortho2) * f * sin(theta);
+      // TODO: maybe implement friction maximum
+    }std::cout << "friction: " << frictionForce.x << " " << frictionForce.y << " " << frictionForce.z << std::endl;
     accelerate(jumpForce + frictionForce);
     limit -=1;
   }

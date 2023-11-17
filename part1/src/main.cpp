@@ -495,7 +495,7 @@ void Input(Scene* scene, std::vector<OBJModel> models, EntityGod &entityGod){
     // Camera
     // Update our position of the camera
     float speed = 0.001;
-    glm::vec3 forwardStep = gCamera.getDirection() * glm::vec3(1, 0, 1) * speed;
+    glm::vec3 forwardStep = glm::normalize(gCamera.getDirection() * glm::vec3(1, 0, 1)) * speed;
     if (state[SDL_SCANCODE_W]) {
       entityGod.getEntity("player").step(forwardStep);
         //gCamera.MoveForward(0.1f);

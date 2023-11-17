@@ -34,6 +34,7 @@ public:
     glm::vec3 getPosition();
 	  // Returns the 'view' direction
     glm::vec3 getDirection();
+    float getYawDegrees();
 private:
 
     // Track the old mouse position

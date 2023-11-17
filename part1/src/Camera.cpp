@@ -80,6 +80,10 @@ glm::vec3 Camera::getDirection(){
     return m_viewDirection;
 }
 
+float Camera::getYawDegrees() {
+  return yawDegrees;
+}
+
 Camera::Camera(){
     std::cout << "Camera.cpp: (Constructor) Created a Camera!\n";
 	// Position us at the origin.
