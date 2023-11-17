@@ -399,7 +399,7 @@ void PreDraw(Scene* scene){
     }
 
     GLint u_viewPosition = checkedUniformLocation("u_viewPosition");
-    glm::vec3 cameraPosition = glm::vec3(gCamera.GetEyeXPosition(), gCamera.GetEyeYPosition(), gCamera.GetEyeZPosition());
+    glm::vec3 cameraPosition = glm::vec3(gCamera.getPosition());
     glUniform3fv(u_viewPosition, 1, &cameraPosition[0]);
 
     scene->uploadUniforms();
@@ -494,22 +494,31 @@ void Input(Scene* scene, std::vector<OBJModel> models, EntityGod &entityGod){
 
     // Camera
     // Update our position of the camera
+    float speed = 0.001;
+    glm::vec3 forwardStep = gCamera.getDirection() * glm::vec3(1, 0, 1) * speed;
     if (state[SDL_SCANCODE_W]) {
-        gCamera.MoveForward(0.1f);
+      entityGod.getEntity("player").step(forwardStep);
+        //gCamera.MoveForward(0.1f);
     }
     if (state[SDL_SCANCODE_S]) {
-        gCamera.MoveBackward(0.1f);
+      entityGod.getEntity("player").step(-forwardStep);
+        //gCamera.MoveBackward(0.1f);
     }
     if (state[SDL_SCANCODE_A]) {
-        gCamera.MoveLeft(0.1f);
+      entityGod.getEntity("player").step(glm::vec3(forwardStep.z, 0, -forwardStep.x));
+        //gCamera.MoveLeft(0.1f);
     }
     if (state[SDL_SCANCODE_D]) {
-        gCamera.MoveRight(0.1f);
+      entityGod.getEntity("player").step(glm::vec3(-forwardStep.z, 0, forwardStep.x));
+        //gCamera.MoveRight(0.1f);
     }
-    if (state[SDL_SCANCODE_RIGHT]) {
-      SDL_Delay(100);
-      entityGod.update();
+    if (state[SDL_SCANCODE_SPACE]) {
+      entityGod.getEntity("player").jump();
     }
+    // if (state[SDL_SCANCODE_RIGHT]) {
+    //   SDL_Delay(100);
+    //   entityGod.update();
+    // }
 
     for (int numberKey = SDL_SCANCODE_1; numberKey < SDL_SCANCODE_0; numberKey += 1) {
       if (state[numberKey]) {
@@ -580,15 +589,20 @@ void MainLoop(ProgramSession* state, EntityGod &entityGod){
     // This works because we effectively 're-center' our mouse at the start of every frame prior to detecting any mouse motion.
     SDL_WarpMouseInWindow(gGraphicsApplicationWindow,gScreenWidth/2,gScreenHeight/2);
     SDL_SetRelativeMouseMode(SDL_TRUE);
-
+  int tick = 0;
 	// While application is running
 	while(!gQuit){
+    tick += 1;
 		// Handle Input
 		Input(state->scene, state->models, entityGod);
 		// Setup anything (i.e. OpenGL State) that needs to take place before draw calls
     state->tick();
-    glm::vec3 pos = entityGod.getEntity("player").getPosition();
+    glm::vec3 pos = entityGod.getEntity("player").getPosition() * BLOCK_SCALE;
     gCamera.SetCameraEyePosition(pos.x, pos.y, pos.z);
+
+    if (tick % 40 == 0) {
+      entityGod.update();
+    }
 		PreDraw(state->scene);
 		// Draw Calls in OpenGL
 		Draw(state->scene);

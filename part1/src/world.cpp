@@ -1,6 +1,7 @@
 #ifndef WORLD_C
 #define WORLD_C
 #include "World.hpp"
+#include <math.h>
 
 /*
 ** --------- WORLD- ------
@@ -87,7 +88,7 @@ void otherAxes(glm::ivec3 axis, glm::ivec3 &r1, glm::ivec3 &r2) {
   r2 = axis.z ? POSY : POSZ;
 }
 
-// check a wall of blocks in the direction of a specific access for collisions
+// check a wall of blocks in the direction of a specific axis for collisions
 bool checkDirectionForCollision(Hitbox hitbox, glm::vec3 origin, glm::vec3 velocity, glm::ivec3 axis, float travelTime, World &world) {
   glm::vec3 blockBoundaryPosition = origin + velocity * travelTime;
   // get the axes along the "wall" of blocks we might collide into
@@ -95,28 +96,33 @@ bool checkDirectionForCollision(Hitbox hitbox, glm::vec3 origin, glm::vec3 veloc
   otherAxes(axis, right, up);
   // define the bounds of the wall
   // the block position of the wall
+  float axisVelocity = axisValue(velocity * glm::vec3(axis));
   int axisPosition = roundDirectionally(
     axisValue(blockBoundaryPosition * glm::vec3(axis)),
-    axisValue(velocity * glm::vec3(axis)) > 0
+    axisVelocity >= 0
     );
-  glm::vec3 hitboxTopRight = blockBoundaryPosition + hitbox.dimensions;
-  glm::vec3 hitboxBottomLeft = blockBoundaryPosition - hitbox.dimensions;
+  int axisDirection = axisVelocity >= 0 ? 1 : -1;
+  glm::vec3 hitboxTopRight = blockBoundaryPosition + hitbox.dimensions / 2.0f;
+  glm::vec3 hitboxBottomLeft = blockBoundaryPosition - hitbox.dimensions / 2.0f;
   int topBound = std::ceil(axisValue(hitboxTopRight * glm::vec3(up)));
   int rightBound = std::ceil(axisValue(hitboxTopRight * glm::vec3(right)));
   int bottomBound = std::floor(axisValue(hitboxBottomLeft * glm::vec3(up)));
   int leftBound = std::floor(axisValue(hitboxBottomLeft * glm::vec3(right)));
-  std::cout << "checking the following ranges: [" << leftBound << ", " << rightBound << "], [" << bottomBound << ", " << topBound << "] layer " << axisPosition << std::endl;
+  // std::cout << "checking the following ranges: [" << leftBound << ", " << rightBound << "], [" << bottomBound << ", " << topBound << "] layer " << axisPosition << std::endl;
   for (int column = bottomBound; column < topBound + 1; column += 1) {
     for (int row = leftBound; row < rightBound + 1; row += 1) {
       glm::ivec3 blockCoordinate = axisPosition * axis + column * up + row * right;
-      if (world.hasBlock(blockCoordinate) && world.getBlock(blockCoordinate) != AIR) {
-        std::cout << "I FOUND IT, I FOUND A SOLID BLOCK: " << blockCoordinate.x << " " << blockCoordinate.y << " " << blockCoordinate.z << " block: " << world.getBlock(blockCoordinate)<< std::endl;
+      glm::ivec3 surfaceCoordinate = blockCoordinate - axis * axisDirection;
+      if (world.hasBlock(blockCoordinate) && world.getBlock(blockCoordinate) != AIR
+        && world.hasBlock(surfaceCoordinate) && world.getBlock(surfaceCoordinate) == AIR) {
+        // std::cout << "I FOUND IT, I FOUND A SOLID BLOCK: " << blockCoordinate.x << " " << blockCoordinate.y << " " << blockCoordinate.z << " block: " << world.getBlock(blockCoordinate)<< std::endl;
+        std::cout << "H: (" << blockCoordinate.x << ", " << blockCoordinate.y << ", " << blockCoordinate.z << ") - <" << axis.x << ", " << axis.y << ", " << axis.z << ">" << std::endl;
         return true;
       } else {
   glm::ivec3 chunkCoordinate = World::blockToChunkCoordinate(blockCoordinate);
   glm::ivec3 localCoordinate = blockCoordinate - chunkCoordinate * CHUNK_SIZE;
-  std::cout << "chunk coordinate: " << chunkCoordinate.x << " " << chunkCoordinate.y << " " << chunkCoordinate.z << " local: " << localCoordinate.x << " " << localCoordinate.y << " " << localCoordinate.z << std::endl;
-        std::cout << "Block coordinate " << blockCoordinate.x << " " << blockCoordinate.y << " " << blockCoordinate.z << " is " << (world.hasBlock(blockCoordinate) && world.getBlock(blockCoordinate)) << std::endl;
+  // std::cout << "chunk coordinate: " << chunkCoordinate.x << " " << chunkCoordinate.y << " " << chunkCoordinate.z << " local: " << localCoordinate.x << " " << localCoordinate.y << " " << localCoordinate.z << std::endl;
+        // std::cout << "Block coordinate " << blockCoordinate.x << " " << blockCoordinate.y << " " << blockCoordinate.z << " is " << (world.hasBlock(blockCoordinate) && world.getBlock(blockCoordinate)) << std::endl;
         // for (int z = 0; z < CHUNK_SIZE; z += 1) {
         //   for (int y = 0; y < CHUNK_SIZE; y += 1) {
         //   for (int x = 0; x < CHUNK_SIZE; x += 1) {
@@ -165,7 +171,7 @@ glm::vec3 nextBlockCollisionTimes(Hitbox hitbox, glm::vec3 origin, glm::vec3 vel
       nextGridLine += axisVelocity > 0 ? 1 : -1;
       // find how long it will take to get there in ticks
       travelDistance = nextGridLine - axisPosition;
-      travelTime = travelDistance / axisVelocity;      
+      travelTime = travelDistance / axisVelocity;
     }
   }
   return collisionTimes;
@@ -187,8 +193,8 @@ void findNextCollision(Entity &entity, World &world, float &collisionTime, glm::
   glm::ivec3 tempAxis;
   for (glm::vec3 side : collisionSides) {
     glm::vec3 projectedCollisionTimes = nextBlockCollisionTimes(entity.getHitbox(), side, entity.getVelocity(), world);
-    std::cout << "On axis " << side.x << side.y << side.z << " collision times " <<
-      projectedCollisionTimes.x << " " << projectedCollisionTimes.y << " " << projectedCollisionTimes.z << std::endl;
+    // std::cout << "On axis " << side.x << side.y << side.z << " collision times " <<
+      // projectedCollisionTimes.x << " " << projectedCollisionTimes.y << " " << projectedCollisionTimes.z << std::endl;
     if (projectedCollisionTimes.x >= 0 && projectedCollisionTimes.x < collisionTime) {
       collisionTime = projectedCollisionTimes.x;
       // the x axis, could be negative x as well
@@ -210,12 +216,52 @@ void findNextCollision(Entity &entity, World &world, float &collisionTime, glm::
   }
 }
 
+// caps a value "up to" a target. if the target is negative, this means
+// the value will be unchanged if greater than but capped to if less than
+float capTo(float value, float change, float cap) {
+  if (abs(value) > abs(cap)) {
+    return value;
+  }
+  return std::min(std::max(value + change, -abs(cap)), abs(cap));
+  // if (cap - value >= 0) {
+  //   if (change < 0) {
+  //     // cap >= value && change < 0
+  //     return std::max(value + change, -cap);
+  //   } else {
+  //     // cap >= value && change >= 0
+  //     return std::min(value + change, cap);
+  //   }
+  // } else {
+  //   if (change < 0) {
+  //     // cap < value && change < 0
+  //     return std::max(value + change, cap);
+  //   } else {
+  //     // cap < value && change >= 0
+  //     return std::min(value + change, -cap);
+  //   }
+  // }
+}
+
 // update the entity's position, behavior, etc...
 void Entity::update(World &world) {
+  std::cout << "-------------------------" <<std::endl;
 
-  std::cout << "UPDATING!!!!! position: " << position.x << ", " << position.y << ", " << position.z << std::endl;
+  std::cout << "P: (" << position.x << ", " << position.y << ", " << position.z << ")"<< std::endl;
   // gravity
-  accelerate({0, -0.01, 0});
+  accelerate({0, -0.001, 0});
+  // player motion
+  //accelerate(nextStep);
+  float maxSpeed = 0.03;
+  if (axisValue(nextStep)) {
+    glm::vec3 walkDirection = glm::normalize(nextStep);
+    glm::vec3 cap = walkDirection * maxSpeed;
+    //glm::vec3 cap = velocityCap - velocity;
+    velocity = glm::vec3(
+      capTo(velocity.x, nextStep.x, cap.x),
+      capTo(velocity.y, nextStep.y, cap.y),
+      capTo(velocity.z, nextStep.z, cap.z)
+      );
+  }
 
   float timeLeft = 1.0;
 
@@ -224,33 +270,56 @@ void Entity::update(World &world) {
   glm::ivec3 collisionAxis;
   glm::vec3 reactionForce;
   
-  while (timeLeft > 0) {
+  int limit = 10;
+  while (limit > 0) {
     // getnextthing
     findNextCollision(*this, world, collisionTime, collisionAxis, reactionForce);
-    std::cout << "collision time: " << collisionTime << std::endl;
+    // std::cout << "collision time: " << collisionTime << std::endl;
     // a collision time in the past represents no collision this frame
-    if (collisionTime < 0) {
+    if (collisionTime < 0 || collisionTime > timeLeft) {
       position += velocity * timeLeft;
-      std::cout << "changed position by " << velocity.y * timeLeft << std::endl;
+      // reset impulses
+      nextStep = glm::vec3(0, 0, 0);
+      jumping = false;
+      // std::cout << "changed position by " << velocity.y * timeLeft << std::endl;
       return;
     }
     timeLeft -= collisionTime;
     position += velocity * collisionTime;
     // TODO: maybe add bounciness or something at some point
-    std::cout << "reaction force! " << std::endl;
+    std::cout << "R: <" << reactionForce.x << ", " << reactionForce.y << ", " << reactionForce.z << ">" << std::endl;
     velocity += reactionForce;
 
     // if there's a reaction force on the negative y axis, we can do some things
-    if (collisionAxis == NEGY && reactionForce.y > 0) {
+    glm::vec3 jumpForce(0);
+    if (reactionForce.y > 0) {
       if (jumping) {
-        accelerate({0, 1, 0});
+        jumpForce += glm::vec3(0, 0.08, 0);
       }
-      accelerate(nextStep);
+      // std::cout << "acceleratin'" << std::endl;
     }
+    // friction
+    glm::vec3 frictionForce(0);
+    // glm::ivec3 ortho1, ortho2;
+    // for (glm::ivec3 axis : {POSX, POSY, POSZ}) {
+    //   otherAxes(axis, ortho1, ortho2);
+    //   float s = axisValue(glm::vec3(ortho1) * velocity);
+    //   float t = axisValue(glm::vec3(ortho2) * velocity);
+    //   float theta = atan2(t, s);
+    //   float r = axisValue(reactionForce * glm::vec3(axis));
+    //   float f = glm::min(r * 0.6f, glm::length(velocity));
+
+    //   frictionForce -= glm::vec3(ortho1) * f * cos(theta);
+    //   frictionForce -= glm::vec3(ortho2) * f * sin(theta);
+    //   // TODO: maybe implement friction maximum
+    // }
+    accelerate(jumpForce + frictionForce);
+    limit -=1;
   }
-  // reset impulses
-  nextStep = glm::vec3(0, 0, 0);
-  jumping = false;
+  
+  if (limit == 0) {
+    std::cout << "------ ERROR ------ : EXCEEDED 10 CHECKS! Last collision time: " << collisionTime << "------------------------------------------------------------------------------------------------------------" <<std::endl; 
+  }
 }
 
 std::string Entity::getName() const {
@@ -288,7 +357,7 @@ OBJModel Entity::getModel() {
 
 Player::Player(std::string entityName, glm::vec3 initialPosition, float facing, glm::vec3 initialVelocity):
 Entity(entityName, initialPosition, facing, initialVelocity) {
-  hitbox = {{12.0/16, 30.0/32, 12.0/16}};
+  hitbox = {{2, 2, 2}};//{{12.0/16, 30.0/32, 12.0/16}};
 }
 
 OBJModel Player::getModel() {
@@ -335,7 +404,7 @@ void EntityGod::removeEntity(std::string name) {
   world.entities.erase(name);
 }
 
-Entity EntityGod::getEntity(std::string name) {
+Entity& EntityGod::getEntity(std::string name) {
   return world.entities[name];
 }
 
@@ -350,7 +419,8 @@ void TerrainGod::generateSpawn() {
   chunk.blocks[5][14][5] = STONE;
   for (int z = 0; z < CHUNK_SIZE; z += 1) {
     for (int x = 0; x < CHUNK_SIZE; x += 1) {
-      chunk.blocks[z][14][x] = STONE;
+      int y = x / 3 + 9;
+      chunk.blocks[z][y][x] = STONE;
     }
   }
   int rad = 4;
@@ -453,25 +523,25 @@ void RenderGod::update() {
     for (int y = originChunk.y - radius; y < originChunk.y + radius; y += 1) {
       for (int x = originChunk.x - radius; x < originChunk.x + radius; x += 1) {
         glm::ivec3 chunkCoordinate = {x, y, z};
-          std::cout << "chunk: " << chunkCoordinate.x << ", " << chunkCoordinate.y  << ", " << chunkCoordinate.z << std::endl;
+          // std::cout << "chunk: " << chunkCoordinate.x << ", " << chunkCoordinate.y  << ", " << chunkCoordinate.z << std::endl;
         // we only care about chunks within a spherical bubble
         if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(originChunk)) > radius) {
-          std::cout << "out of chunk render sphere" << std::endl;
+          // std::cout << "out of chunk render sphere" << std::endl;
           continue;
         }
         // if the chunk is already cached, it must be up to date
         if (realm.find(chunkCoordinate) != realm.end()) {
-          std::cout << "chunk already cached" << std::endl;
+          // std::cout << "chunk already cached" << std::endl;
           continue;
         }
         // TODO: if a chunk does not exist, we should generate it instead of skipping it
         if (!world.hasChunk(chunkCoordinate)) {
-          std::cout << "chunk does not exist" << std::endl;
+          // std::cout << "chunk does not exist" << std::endl;
           continue;
         }
         chunkCount += 1;
           std::cout << "rendering chunk!------------" << std::endl;
-        OBJModel model = scaleOBJ(offsetOBJ(world.getChunk(chunkCoordinate).calculateChunkOBJ(), glm::vec3(chunkCoordinate * CHUNK_SIZE) + glm::vec3(0, -1, 0)), BLOCK_SCALE);
+        OBJModel model = scaleOBJ(offsetOBJ(world.getChunk(chunkCoordinate).calculateChunkOBJ(), glm::vec3(chunkCoordinate * CHUNK_SIZE)), BLOCK_SCALE);
         model.vertexNormals.push_back({0, 0, 0});
         scene.createMesh(Chunk::id(chunkCoordinate), model);
       }

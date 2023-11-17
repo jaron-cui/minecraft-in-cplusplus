@@ -148,7 +148,7 @@ class EntityGod: public God {
     bool seesEntity(std::string name);
     void createEntity(Entity entity);
     void removeEntity(std::string name);
-    Entity getEntity(std::string name);
+    Entity& getEntity(std::string name);
 };
 
 class TerrainGod: public God {
