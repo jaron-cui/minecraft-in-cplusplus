@@ -65,7 +65,7 @@ void main()
     ambient += calculateAmbient(light);
     diffuse += calculateDiffuse(light);
     specular += calculateSpecular(light);
-    ambient += vec3(1, 1, 1) * (int(distance(light.lightPos, v_position)) % 5) / 5.0;
+    ambient += vec3(1, 1, 1) * (int(distance(light.lightPos, v_position)) % 20) / 20.0;
   }
   
   vec3 total = ambient + diffuse + specular;
