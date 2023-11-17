@@ -655,7 +655,8 @@ bool tryLoadingTexture(std::string path) {
 * @return program status
 */
 int main( int argc, char* args[] ){
-
+  // Image texture("media/textures.ppm");
+  // texture.LoadPPM(false);
   // OBJBuilder builder;
   // addFaceVertices(&builder, {glm::ivec3(0, 0, 0), glm::ivec3(-1, 0, 0)});
   // for (Face face : builder.model.faces) {

@@ -8,7 +8,7 @@ OBJModel scaleOBJ(OBJModel model, float factor) {
   for (glm::vec3 v : model.vertices) {
     scaled.push_back(v * factor);
   }
-  return {scaled, model.vertexNormals, model.faces};
+  return {scaled, model.vertexNormals, model.faces, model.textureCoordinates, model.mtl};
 }
 
 OBJModel offsetOBJ(OBJModel model, glm::vec3 offset) {
@@ -16,7 +16,7 @@ OBJModel offsetOBJ(OBJModel model, glm::vec3 offset) {
   for (glm::vec3 v : model.vertices) {
     translated.push_back(v + offset);
   }
-  return {translated, model.vertexNormals, model.faces};
+  return {translated, model.vertexNormals, model.faces, model.textureCoordinates, model.mtl};
 }
 
 void split(const std::string& s, std::vector<std::string>& results, const std::string delimiter) {
@@ -55,7 +55,7 @@ glm::vec3 extractVertex(const std::string line) {
   return {std::stof(tokens.at(0)), std::stof(tokens.at(1)), std::stof(tokens.at(2))};
 }
 
-TextureCoordinate extractTextureCoordinate(const std::string line) {
+glm::vec2 extractTextureCoordinate(const std::string line) {
   std::vector<std::string> tokens;
   if (line.length() < 3) {
     throw std::invalid_argument("Invalid line in OBJ - no values.");

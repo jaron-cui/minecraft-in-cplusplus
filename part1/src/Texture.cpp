@@ -52,8 +52,8 @@ void Texture::LoadTexture(const std::string filepath){
 	 	// our textures.
 	 	// There are four parameters that must be set.
 	 	// GL_TEXTURE_MIN_FILTER - How texture filters (linearly, etc.)
-	 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
-	 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+	 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); 
+	 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); 
 		// Wrap mode describes what to do if we go outside the boundaries of
 		// texture.
   	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); 

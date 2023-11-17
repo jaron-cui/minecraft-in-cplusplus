@@ -4,9 +4,8 @@
 // what our shader reads, the first part of the
 // graphics pipeline.
 layout(location=0) in vec3 position;
-layout(location=1) in vec3 vertexColors;
-layout(location=2) in vec3 vertexNormals;
-layout(location=3) in vec2 textureCoordinate;
+layout(location=1) in vec3 vertexNormals;
+layout(location=2) in vec2 textureCoordinate;
 
 // Uniform variables
 uniform mat4 u_ModelMatrix;
@@ -16,7 +15,6 @@ uniform mat4 u_Projection; // We'll use a perspective projection
 uniform vec3 u_viewPosition;
 
 // Pass vertex colors into the fragment shader
-out vec3 v_vertexColors;
 out vec3 v_vertexNormals;
 out vec3 v_position;
 out vec2 v_TextureCoordinate;
@@ -25,7 +23,6 @@ out vec3 viewPosition;
 
 void main()
 {
-  v_vertexColors = vertexColors;
   v_vertexNormals= vertexNormals;
   v_position = position;
   v_TextureCoordinate = textureCoordinate;

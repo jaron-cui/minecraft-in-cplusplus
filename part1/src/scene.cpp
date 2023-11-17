@@ -2,7 +2,6 @@
 
 // encode an OBJ into VBO data
 bool encodeOBJ(OBJModel model, std::vector<VBOVertex> &data, std::vector<GLuint> &indices) {
-  glm::vec3 color = {1.0, 1.0, 1.0};
   std::unordered_map<VBOVertex, int> processedVertices;
 
   for (Face face : model.faces) {
@@ -16,11 +15,10 @@ bool encodeOBJ(OBJModel model, std::vector<VBOVertex> &data, std::vector<GLuint>
       if (vd.vertexNormal < 0 || vd.vertexNormal >= model.vertexNormals.size()) {
         return false;
       }
-      TextureCoordinate b = {0, 0};
-      TextureCoordinate tc = model.mtl.mapKD.length() == 0 ? b : model.textureCoordinates.at(vd.textureCoordinate);
+      glm::vec2 b = {0, 0};
+      glm::vec2 tc = model.mtl.mapKD.length() == 0 ? b : model.textureCoordinates.at(vd.textureCoordinate);
       VBOVertex v = VBOVertex(
         model.vertices.at(vd.vertex),
-        color,
         model.vertexNormals.at(vd.vertexNormal),
         tc
         );
@@ -80,6 +78,10 @@ glm::vec3 Mesh::getPosition() {
   return position;
 }
 
+OBJModel& Mesh::getBaseModel() {
+  return baseModel;
+}
+
 void Mesh::updateModel() {
   setVBOfromOBJ(offsetOBJ(scaleOBJ(baseModel, scale), position));
 }
@@ -123,6 +125,19 @@ Scene::~Scene() {
   }
 }
 
+bool tryLoadingTexture(std::string path, std::unordered_map<std::string, Texture*> &map) {
+  if (path.length() == 0 || map.find(path) != map.end()) {
+    return false;
+  }
+
+  Texture *t = new Texture();
+  t->LoadTexture(path);
+  std::cout << "binding " << path << " to slot " << map.size() << std::endl;
+  t->Bind(map.size());
+  map[path] = t;
+  return true;
+}
+
 bool Scene::createMesh(std::string name, OBJModel obj) {
   if (meshes.find(name) != meshes.end()) {
     return false;
@@ -131,6 +146,7 @@ bool Scene::createMesh(std::string name, OBJModel obj) {
   Mesh* mesh = new Mesh(*vao, obj);
   std::cout << "storing mesh" << std::endl;
   meshes[name] = mesh;
+  tryLoadingTexture(obj.mtl.mapKD, textures);
   
   std::cout << "done storing mesh" << std::endl;
   return true;
@@ -213,19 +229,22 @@ void Scene::draw(){
   //Render data
   for (auto entry : meshes) {
     Mesh* mesh = entry.second;
+
+    std::string diffusePath = mesh->getBaseModel().mtl.mapKD;
+    if (textures.find(diffusePath) != textures.end()) {
+      textures[diffusePath]->Bind(0);
+    }
+
     glBindBuffer(GL_ARRAY_BUFFER, mesh->getVBO());
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->getElementBuffer());
     // position
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (void*)0);
-    // Color information (r,g,b)
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*3));
     // Normal information (nx,ny,nz)
-    glEnableVertexAttribArray(2);
+    glEnableVertexAttribArray(1);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*6));
     // texture coordinate
-    glEnableVertexAttribArray(3);
+    glEnableVertexAttribArray(2);
     glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*9));
 
     glDrawElements(GL_TRIANGLES, mesh->getElementBufferSize(), GL_UNSIGNED_INT, (void*)(0 * sizeof(GLuint)));

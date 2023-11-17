@@ -100,7 +100,7 @@ void Image::LoadPPM(bool flip){
   if (!nextToken(in, buffer, bufferIndex, token)) {
     throw std::invalid_argument("Invalid PPM file - missing file type.");
   }
-  if (token != "P3") {
+  if (token != "P6") {
     throw std::invalid_argument("Invalid PPM file - incorrect file type: " + token);
   }
   // width
@@ -124,18 +124,17 @@ void Image::LoadPPM(bool flip){
 
   // pixel data
   m_pixelData = new uint8_t[m_height * m_width * 3];
-  for (int y = 0; y < m_height; y += 1) {
-    for (int x = 0; x < m_width; x += 1) {
-      for (int c = 0; c < 3; c += 1) {
-	if (!nextToken(in, buffer, bufferIndex, token)) {
-          throw std::invalid_argument("Invalid PPM file - missing color tokens.");
-	}
-        int scaledY = flip ? m_height - y - 1 : y;
-        int scaledX = flip ? m_width - x - 1 : x;
-        m_pixelData[(scaledY * m_width + scaledX) * 3 + c] = stoi(token);
-      }
-    }
+  if (!getline(in, token)) {
+    throw std::invalid_argument("Invalid PPM file - missing color tokens.");
   }
+  strcpy((char*)m_pixelData, token.data());
+  // for (int y = 0; y < m_height; y += 1) {
+  //   if (!getline(in, token)) {
+  //     std::cout << y << " "  << token.length() << std::endl;
+  //     throw std::invalid_argument("Invalid PPM file - missing color tokens.");
+  //   }
+  //   strcpy((char*)m_pixelData + m_width * sizeof(char), token.data());
+  // }
   in.close();
 }
 

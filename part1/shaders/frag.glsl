@@ -16,7 +16,6 @@ struct PointLight{
   vec3 specular;
 };
 
-in vec3 v_vertexColors;
 in vec3 v_vertexNormals;
 in vec3 v_position;
 in vec2 v_TextureCoordinate;

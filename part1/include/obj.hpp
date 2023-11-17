@@ -30,10 +30,6 @@ struct Face {
   std::vector<VertexDescriptor> vertexDescriptors;
 };
 
-struct TextureCoordinate {
-  float x, y;
-};
-
 struct MTL {
   std::string mapKD;
 };
@@ -42,7 +38,7 @@ struct OBJModel {
   std::vector<glm::vec3> vertices;
   std::vector<glm::vec3> vertexNormals;
   std::vector<Face> faces;
-  std::vector<TextureCoordinate> textureCoordinates;
+  std::vector<glm::vec2> textureCoordinates;
   MTL mtl;
 };
 
@@ -76,10 +72,22 @@ struct OBJBuilder {
     return it - v.begin();
   }
 
-  void addSimpleFace(std::vector<glm::vec3> vertices) {
+  int addTextureCoordinate(glm::vec2 textureCoordinate) {
+    std::vector<glm::vec2> &v = model.textureCoordinates;
+    auto it = std::find(v.begin(), v.end(), textureCoordinate);
+    // if vertex does not already exit, insert it
+    if (it == v.end()) {
+      v.push_back(textureCoordinate);
+      return v.size() - 1;
+    }
+    // if vertex does exist, return existing index
+    return it - v.begin();
+  }
+
+  void addSimpleFace(std::vector<glm::vec3> vertices, std::vector<glm::vec2> textureCoordinates) {
     std::vector<VertexDescriptor> vertexDescriptors;
-    for (glm::vec3 vertex : vertices) {
-      vertexDescriptors.push_back({addVertex(vertex)});
+    for (int i = 0; i < vertices.size(); i += 1) {
+      vertexDescriptors.push_back({addVertex(vertices[i]), 0, addTextureCoordinate(textureCoordinates[i])});
     }
     model.faces.push_back({vertexDescriptors});
   }

@@ -455,11 +455,11 @@ std::vector<RenderBlockFace> calculateChunkFaces(Chunk &chunk) {
         for (glm::ivec3 direction : ORTHO_DIRS) {
           // don't add a face if the adjacent block is out of bounds or it is not air
           glm::ivec3 neighbor = blockCoordinate + direction;
-          if (!Chunk::inBounds(neighbor) || chunk.getBlock(neighbor) != AIR) {
+          if (Chunk::inBounds(neighbor) && chunk.getBlock(neighbor) != AIR) {
             continue;
           }
           // add the face represented by a block coordinate and a direction
-          faces.push_back({blockCoordinate, direction});
+          faces.push_back({blockCoordinate, direction, chunk.getBlock(blockCoordinate)});
         }
       }
     }
@@ -474,11 +474,14 @@ std::vector<RenderBlockFace> calculateChunkFaces(Chunk &chunk) {
 void addFaceVertices(OBJBuilder &builder, RenderBlockFace face) {
   glm::vec3 origin = glm::vec3(face.blockCoordinate);
   std::vector<glm::vec3> vertices(6);
+  std::vector<glm::vec2> textureCoordinates(6);
+  glm::vec2 blockTextureOffset = float(face.blockType - 1) * glm::vec2(1.0f, 0.0f);
+
   int vertexDirection = face.facing.x | face.facing.y | face.facing.z;
   int zero1 = face.facing.x ? face.facing.y ? 2 : 1 : 0;
   int zero2 = (face.facing.y || face.facing.x) ? 2 : 1;
   // std::cout << "zeroes: " << zero1 << ", " << zero2 << " verdir: " << vertexDirection << std::endl;
-  int corner[3] = {face.facing.x, face.facing.y, face.facing.z};
+  glm::vec3 corner = {face.facing.x, face.facing.y, face.facing.z};
   // iterate through 3 indices
   for (int i = vertexDirection < 0 ? 2 : 0, _i = 0; _i < 3; i += vertexDirection, _i += 1) {
     glm::ivec2 offset1 = SQUARE_OFFSETS[TRI1[i % 3]];
@@ -486,12 +489,15 @@ void addFaceVertices(OBJBuilder &builder, RenderBlockFace face) {
     corner[zero1] = offset1.x;
     corner[zero2] = offset1.y;
     // std::cout << "offset index: " << i % 3 << std::endl;
-    vertices[_i] = (glm::vec3(corner[0], corner[1], corner[2]) * 0.5f + origin);
+    vertices[_i] = (corner * 0.5f + origin);
+    textureCoordinates[_i] = (blockTextureOffset + (glm::vec2(offset1) + 1.0f) * 0.5f) * .03125f;
+
     corner[zero1] = offset2.x;
     corner[zero2] = offset2.y;
-    vertices[3 + _i] = (glm::vec3(corner[0], corner[1], corner[2]) * 0.5f + origin);
+    vertices[3 + _i] = (corner * 0.5f + origin);
+    textureCoordinates[3 + _i] = (blockTextureOffset + (glm::vec2(offset2) + 1.0f) * 0.5f) * .03125f;
   }
-  builder.addSimpleFace(vertices);
+  builder.addSimpleFace(vertices, textureCoordinates);
 }
 
 // TODO: optimize chunk rendering and caching by using an intermediate representation of faces that
@@ -544,6 +550,7 @@ void RenderGod::update() {
         chunkCount += 1;
           std::cout << "rendering chunk!------------" << std::endl;
         OBJModel model = scaleOBJ(offsetOBJ(world.getChunk(chunkCoordinate).calculateChunkOBJ(), glm::vec3(chunkCoordinate * CHUNK_SIZE)), BLOCK_SCALE);
+        model.mtl = {"media/textures.ppm"};
         model.vertexNormals.push_back({0, 0, 0});
         scene.createMesh(Chunk::id(chunkCoordinate), model);
       }

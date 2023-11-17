@@ -170,6 +170,7 @@ class RenderGod: public God {
 struct RenderBlockFace {
   glm::ivec3 blockCoordinate;
   glm::ivec3 facing;
+  uint8_t blockType;
 };
 
 // TODO: remove
