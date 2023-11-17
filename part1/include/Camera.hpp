@@ -30,18 +30,10 @@ public:
     void MoveDown(float speed);
     // Set the position for the camera
     void SetCameraEyePosition(float x, float y, float z);
-    // Returns the Camera X Position where the eye is 
-    float GetEyeXPosition();
-    // Returns the Camera Y Position where the eye is 
-    float GetEyeYPosition();
-    // Returns the Camera Z Position where the eye is 
-    float GetEyeZPosition();
-	// Returns the X 'view' direction
-    float GetViewXDirection();
-    // Returns the Y 'view' direction
-    float GetViewYDirection();
-    // Returns the Z 'view' direction
-    float GetViewZDirection();
+    // Returns the Camera Position where the eye is 
+    glm::vec3 getPosition();
+	  // Returns the 'view' direction
+    glm::vec3 getDirection();
 private:
 
     // Track the old mouse position

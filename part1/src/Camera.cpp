@@ -24,14 +24,16 @@ void Camera::MouseLook(int mouseX, int mouseY){
     int dx = newMousePosition[0] - m_oldMousePosition[0];
     int dy = newMousePosition[1] - m_oldMousePosition[1];
     yawDegrees -= dx * PAN_FACTOR;
-    pitchDegrees += dy * PAN_FACTOR;
-    pitchDegrees = std::max(-180.0f, std::min(180.0f, pitchDegrees));
+    float pitchChangeMax = 89 - pitchDegrees;
+    float pitchChangeMin = -89 - pitchDegrees;
+    pitchDegrees += std::max(pitchChangeMin, std::min(pitchChangeMax, dy * PAN_FACTOR));
 
     // Rotate about the upVector
     glm::mat4 rotation(1);
-    glm::mat4 pitchRotation = glm::rotate(rotation, glm::radians(pitchDegrees), glm::cross({0, 1.0, 0}, m_viewDirection));
-    glm::mat4 yawRotation = glm::rotate(pitchRotation, glm::radians(yawDegrees), {0, 1, 0});
-    m_viewDirection = glm::vec3(yawRotation * glm::vec4(1.0, 0.0, 0.0, 1.0));
+    glm::vec3 sideVector = glm::vec3(sin(glm::radians(yawDegrees)), 0, cos(glm::radians(yawDegrees)));
+    glm::mat4 pitchRotation = glm::rotate(rotation, glm::radians(pitchDegrees), -sideVector);
+    glm::mat4 yawRotation = glm::rotate(rotation, glm::radians(yawDegrees), glm::vec3(0, 1, 0));
+    m_viewDirection = glm::vec3(pitchRotation * yawRotation * glm::vec4(1.0, 0.0, 0.0, 1.0));
 
 
     // Update our old position after we have made changes 
@@ -70,30 +72,13 @@ void Camera::SetCameraEyePosition(float x, float y, float z){
     m_eyePosition.z = z;
 }
 
-float Camera::GetEyeXPosition(){
-    return m_eyePosition.x;
+glm::vec3 Camera::getPosition(){
+    return m_eyePosition;
 }
 
-float Camera::GetEyeYPosition(){
-    return m_eyePosition.y;
+glm::vec3 Camera::getDirection(){
+    return m_viewDirection;
 }
-
-float Camera::GetEyeZPosition(){
-    return m_eyePosition.z;
-}
-
-float Camera::GetViewXDirection(){
-    return m_viewDirection.x;
-}
-
-float Camera::GetViewYDirection(){
-    return m_viewDirection.y;
-}
-
-float Camera::GetViewZDirection(){
-    return m_viewDirection.z;
-}
-
 
 Camera::Camera(){
     std::cout << "Camera.cpp: (Constructor) Created a Camera!\n";
