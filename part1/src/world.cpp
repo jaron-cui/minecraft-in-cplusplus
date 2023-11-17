@@ -73,8 +73,9 @@ int roundDirectionally(float x, bool up) {
   return up ? std::ceil(x) : std::floor(x);
 }
 
-float roundToHalf(float x, bool up) {
-  return roundDirectionally(x + 0.5, up) - 0.5;
+float roundToXPoint5(float x, bool up) {
+  int sign = up ? 1 : -1;
+  return roundDirectionally(x + 0.5 * sign, up) - 0.5 * sign;
 }
 
 // assumes that exactly one field is nonzero
@@ -88,6 +89,18 @@ void otherAxes(glm::ivec3 axis, glm::ivec3 &r1, glm::ivec3 &r2) {
   r2 = axis.z ? POSY : POSZ;
 }
 
+float roundTieDown(float x) {
+  int base = std::floor(x);
+  float diff = x - base;
+  return diff > 0.5f ? base + 1 : base;
+}
+
+float roundTieUp(float x) {
+  int base = std::floor(x);
+  float diff = x - base;
+  return diff < 0.5f ? base : base + 1;
+}
+
 // check a wall of blocks in the direction of a specific axis for collisions
 bool checkDirectionForCollision(Hitbox hitbox, glm::vec3 origin, glm::vec3 velocity, glm::ivec3 axis, float travelTime, World &world) {
   glm::vec3 blockBoundaryPosition = origin + velocity * travelTime;
@@ -97,17 +110,18 @@ bool checkDirectionForCollision(Hitbox hitbox, glm::vec3 origin, glm::vec3 veloc
   // define the bounds of the wall
   // the block position of the wall
   float axisVelocity = axisValue(velocity * glm::vec3(axis));
-  int axisPosition = roundDirectionally(
-    axisValue(blockBoundaryPosition * glm::vec3(axis)),
-    axisVelocity >= 0
-    );
+  // int axisPosition = roundDirectionally(
+  //   axisValue(blockBoundaryPosition * glm::vec3(axis)),
+  //   axisVelocity >= 0
+  //   );
+  int axisPosition = std::round(axisValue(blockBoundaryPosition * glm::vec3(axis)));
   int axisDirection = axisVelocity >= 0 ? 1 : -1;
-  glm::vec3 hitboxTopRight = blockBoundaryPosition + hitbox.dimensions / 2.0f;
-  glm::vec3 hitboxBottomLeft = blockBoundaryPosition - hitbox.dimensions / 2.0f;
-  int topBound = std::ceil(axisValue(hitboxTopRight * glm::vec3(up)));
-  int rightBound = std::ceil(axisValue(hitboxTopRight * glm::vec3(right)));
-  int bottomBound = std::floor(axisValue(hitboxBottomLeft * glm::vec3(up)));
-  int leftBound = std::floor(axisValue(hitboxBottomLeft * glm::vec3(right)));
+  glm::vec3 hitboxTopRight = blockBoundaryPosition + hitbox.dimensions * 0.5f;
+  glm::vec3 hitboxBottomLeft = blockBoundaryPosition - hitbox.dimensions * 0.5f;
+  int topBound = roundTieDown(axisValue(hitboxTopRight * glm::vec3(up)));
+  int rightBound = roundTieUp(axisValue(hitboxTopRight * glm::vec3(right)));
+  int bottomBound = roundTieDown(axisValue(hitboxBottomLeft * glm::vec3(up)));
+  int leftBound = roundTieUp(axisValue(hitboxBottomLeft * glm::vec3(right)));
   // std::cout << "checking the following ranges: [" << leftBound << ", " << rightBound << "], [" << bottomBound << ", " << topBound << "] layer " << axisPosition << std::endl;
   for (int column = bottomBound; column < topBound + 1; column += 1) {
     for (int row = leftBound; row < rightBound + 1; row += 1) {
@@ -117,26 +131,9 @@ bool checkDirectionForCollision(Hitbox hitbox, glm::vec3 origin, glm::vec3 veloc
         && world.hasBlock(surfaceCoordinate) && world.getBlock(surfaceCoordinate) == AIR) {
         // std::cout << "I FOUND IT, I FOUND A SOLID BLOCK: " << blockCoordinate.x << " " << blockCoordinate.y << " " << blockCoordinate.z << " block: " << world.getBlock(blockCoordinate)<< std::endl;
         std::cout << "H: (" << blockCoordinate.x << ", " << blockCoordinate.y << ", " << blockCoordinate.z << ") - <" << axis.x << ", " << axis.y << ", " << axis.z << ">" << std::endl;
+        std::cout << "I: L: " << axisPosition << " S[" << bottomBound << ", " << topBound << "]; T[" << leftBound << ", " << rightBound << "]" << std::endl;
+        std::cout << "O: (" << origin.x << ", " << origin.y << ", " << origin.z << ")" << std::endl;
         return true;
-      } else {
-  glm::ivec3 chunkCoordinate = World::blockToChunkCoordinate(blockCoordinate);
-  glm::ivec3 localCoordinate = blockCoordinate - chunkCoordinate * CHUNK_SIZE;
-  // std::cout << "chunk coordinate: " << chunkCoordinate.x << " " << chunkCoordinate.y << " " << chunkCoordinate.z << " local: " << localCoordinate.x << " " << localCoordinate.y << " " << localCoordinate.z << std::endl;
-        // std::cout << "Block coordinate " << blockCoordinate.x << " " << blockCoordinate.y << " " << blockCoordinate.z << " is " << (world.hasBlock(blockCoordinate) && world.getBlock(blockCoordinate)) << std::endl;
-        // for (int z = 0; z < CHUNK_SIZE; z += 1) {
-        //   for (int y = 0; y < CHUNK_SIZE; y += 1) {
-        //   for (int x = 0; x < CHUNK_SIZE; x += 1) {
-        //   std::cout << int(world.getChunk(chunkCoordinate).getBlock({x, y, z})) << " ";
-        // }
-        // std::cout << std::endl;
-        // }
-        // std::cout << std::endl;
-        // }
-        // glm::ivec3 bc = {0, -2, 0};
-        // glm::ivec3 cc = World::blockToChunkCoordinate(bc);
-        // glm::ivec3 lc = bc - cc * CHUNK_SIZE;
-        // std::cout << "Has block? " << world.hasBlock(bc) << std::endl;
-        // std::cout << "BLOCK COORDINATE 0 -2 0: " << int(world.getChunk(cc).getBlock(lc)) << " " << int(world.getBlock(bc)) << std::endl;
       }
     }
   }
@@ -144,69 +141,62 @@ bool checkDirectionForCollision(Hitbox hitbox, glm::vec3 origin, glm::vec3 veloc
 }
 
 // calculate the times at which the vector will next cross solid block boundaries
-glm::vec3 nextBlockCollisionTimes(Hitbox hitbox, glm::vec3 origin, glm::vec3 velocity, World &world) {
-  glm::vec3 collisionTimes = {-1, -1, -1};
-
-  for (glm::ivec3 axis : {POSX, POSY, POSZ}) {
-    float axisPosition = axisValue(origin * glm::vec3(axis));
-    float axisVelocity = axisValue(velocity * glm::vec3(axis));
-    // no block boundary intersection if no velocity component
-    if (axisVelocity == 0) {
-      // there will be no intersection in this tick
-      continue;
-    }
-    // round the current origin position to the nearest block boundary
-    // in the direction of the current velocity
-    float nextGridLine = roundToHalf(axisPosition, axisVelocity > 0);
-    float travelDistance = nextGridLine - axisPosition;
-    float travelTime = travelDistance / axisVelocity;
-    // check block boundaries that will be crossed in this frame for collisions
-    while (travelTime <= 1.0) {
-      // TODO: potentially add support for sub-block collisions with richer return results
-      if (checkDirectionForCollision(hitbox, origin, velocity, axis, travelTime, world)) {
-        collisionTimes += (travelTime + 1) * glm::vec3(axis);
-        break;
-      }
-      // look at the next gridline
-      nextGridLine += axisVelocity > 0 ? 1 : -1;
-      // find how long it will take to get there in ticks
-      travelDistance = nextGridLine - axisPosition;
-      travelTime = travelDistance / axisVelocity;
-    }
+float nextBlockCollisionTime(Hitbox hitbox, glm::vec3 origin, glm::vec3 velocity, glm::ivec3 axis, World &world) {
+  float axisPosition = axisValue(origin * glm::vec3(axis));
+  float axisVelocity = axisValue(velocity * glm::vec3(axis));
+  if (axisVelocity == 0) {
+    // there will be no intersection in this tick
+    return -1;
   }
-  return collisionTimes;
+  // round the current origin position to the nearest block boundary
+  // in the direction of the current velocity
+  float nextGridLine = roundToXPoint5(axisPosition, axisVelocity > 0);
+  float travelDistance = nextGridLine - axisPosition;
+  float travelTime = travelDistance / axisVelocity;
+  // check block boundaries that will be crossed in this frame for collisions
+  while (travelTime <= 1.0) {
+    // TODO: potentially add support for sub-block collisions with richer return results
+    if (checkDirectionForCollision(hitbox, origin, velocity, axis, travelTime, world)) {
+      std::cout << "collision!" << std::endl;
+      return travelTime;
+    }
+    // look at the next gridline
+    nextGridLine += axisVelocity > 0 ? 1 : -1;
+    // find how long it will take to get there in ticks
+    travelDistance = nextGridLine - axisPosition;
+    travelTime = travelDistance / axisVelocity;
+  }
+  return -1;
 }
 
 void findNextCollision(Entity &entity, World &world, float &collisionTime, glm::ivec3 &collisionAxis, glm::vec3 &reactionForce) {
   // we only need to check 3 sides of a moving box in a static world for collisions
-  float xOffset = (entity.getVelocity().x > 0 ? 1 : -1) * (entity.getHitbox().dimensions.x / 2);
-  float yOffset = (entity.getVelocity().y > 0 ? 1 : -1) * (entity.getHitbox().dimensions.y / 2);
-  float zOffset = (entity.getVelocity().z > 0 ? 1 : -1) * (entity.getHitbox().dimensions.z / 2);
-  glm::vec3 collisionSides[3] = {
-    entity.getPosition() + xOffset * glm::vec3(POSX),
-    entity.getPosition() + yOffset * glm::vec3(POSY),
-    entity.getPosition() + zOffset * glm::vec3(POSZ)
-    };
+  // float xOffset = (entity.getVelocity().x > 0 ? 1 : -1) * (entity.getHitbox().dimensions.x / 2);
+  // float yOffset = (entity.getVelocity().y > 0 ? 1 : -1) * (entity.getHitbox().dimensions.y / 2);
+  // float zOffset = (entity.getVelocity().z > 0 ? 1 : -1) * (entity.getHitbox().dimensions.z / 2);
+  // glm::vec3 collisionSides[3] = {
+  //   entity.getPosition() + xOffset * glm::vec3(POSX),
+  //   entity.getPosition() + yOffset * glm::vec3(POSY),
+  //   entity.getPosition() + zOffset * glm::vec3(POSZ)
+  //   };
 
   collisionTime = 2;
   float tempTime;
   glm::ivec3 tempAxis;
-  for (glm::vec3 side : collisionSides) {
-    glm::vec3 projectedCollisionTimes = nextBlockCollisionTimes(entity.getHitbox(), side, entity.getVelocity(), world);
+
+  glm::vec3 v = entity.getVelocity();
+  glm::vec3 directions = glm::vec3(v.x >= 0 ? 1 : -1, v.y >= 0 ? 1 : -1, v.z >= 0 ? 1 : -1);
+  glm::vec3 offsets = directions * (entity.getHitbox().dimensions * 0.5f);
+  
+  for (glm::vec3 axis : {POSX, POSY, POSZ}) {
+    glm::vec3 side = entity.getPosition() + offsets * glm::vec3(axis);
+    std::cout << offsets.x << " " << offsets.y << " " << offsets.z << std::endl;
+    float projectedCollisionTime = nextBlockCollisionTime(entity.getHitbox(), side, entity.getVelocity(), axis, world);
     // std::cout << "On axis " << side.x << side.y << side.z << " collision times " <<
       // projectedCollisionTimes.x << " " << projectedCollisionTimes.y << " " << projectedCollisionTimes.z << std::endl;
-    if (projectedCollisionTimes.x >= 0 && projectedCollisionTimes.x < collisionTime) {
-      collisionTime = projectedCollisionTimes.x;
-      // the x axis, could be negative x as well
-      collisionAxis = POSX;
-    }
-    if (projectedCollisionTimes.y >= 0 && projectedCollisionTimes.y < collisionTime) {
-      collisionTime = projectedCollisionTimes.y;
-      collisionAxis = POSY;
-    }
-    if (projectedCollisionTimes.z >= 0 && projectedCollisionTimes.z < collisionTime) {
-      collisionTime = projectedCollisionTimes.z;
-      collisionAxis = POSZ;
+    if (projectedCollisionTime >= 0 && projectedCollisionTime < collisionTime) {
+      collisionTime = projectedCollisionTime;
+      collisionAxis = axis;
     }
   }
   if (collisionTime <= 1) {
@@ -219,10 +209,22 @@ void findNextCollision(Entity &entity, World &world, float &collisionTime, glm::
 // caps a value "up to" a target. if the target is negative, this means
 // the value will be unchanged if greater than but capped to if less than
 float capTo(float value, float change, float cap) {
-  if (abs(value) > abs(cap)) {
-    return value;
+  // if (abs(value) > abs(cap)) {
+  //   return value;
+  // }
+  if (change >= 0) {
+    if (value <= cap) {
+      return std::min(value + change, cap);
+    } else {
+      return value;
+    }
+  } else {
+    if (value > -cap) {
+      return std::max(value + change, -cap);
+    } else {
+      return value;
+    }
   }
-  return std::min(std::max(value + change, -abs(cap)), abs(cap));
   // if (cap - value >= 0) {
   //   if (change < 0) {
   //     // cap >= value && change < 0
@@ -257,9 +259,9 @@ void Entity::update(World &world) {
     glm::vec3 cap = walkDirection * maxSpeed;
     //glm::vec3 cap = velocityCap - velocity;
     velocity = glm::vec3(
-      capTo(velocity.x, nextStep.x, cap.x),
-      capTo(velocity.y, nextStep.y, cap.y),
-      capTo(velocity.z, nextStep.z, cap.z)
+      capTo(velocity.x, nextStep.x, abs(cap.x)),
+      capTo(velocity.y, nextStep.y, abs(cap.y)),
+      capTo(velocity.z, nextStep.z, abs(cap.z))
       );
   }
 
