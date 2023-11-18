@@ -57,6 +57,13 @@ GLuint CompileShader(GLuint type, const std::string& source);
 */
 GLuint CreateShaderProgram(const std::string& vertexShaderSource, const std::string& fragmentShaderSource);
 
+/**
+* Create the graphics pipeline
+*
+* @return void
+*/
+GLuint CreateGraphicsPipeline();
+
 class Mesh {
   private:
   GLuint vbo = 0;
@@ -110,7 +117,7 @@ struct PointLight{
 
 class Scene {
   private:
-    GLuint* pipeline;
+    GLuint pipeline;
     int width, height;
     Camera &camera;
     GLuint vao;
@@ -122,7 +129,7 @@ class Scene {
     GLint checkedUniformLocation(std::string uniformName);
     void setPointLightUniform(PointLight light, int index);
   public:
-    Scene(GLuint* graphicsPipeline, int width, int height, Camera &camera);
+    Scene(int width, int height, Camera &camera);
     ~Scene();
     bool createMesh(std::string name, OBJModel obj);
     Mesh* getMesh(std::string name);

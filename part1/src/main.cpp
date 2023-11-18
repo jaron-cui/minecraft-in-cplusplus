@@ -29,29 +29,10 @@ int gScreenWidth = 640;
 int gScreenHeight = 480;
 SDL_Window* gGraphicsApplicationWindow 	= nullptr;
 SDL_GLContext gOpenGLContext = nullptr;
-
 // Main loop flag
 bool gQuit = false; // If this is quit = 'true' then the program terminates.
-
-// shader
-// The following stores the a unique id for the graphics pipeline
-// program object that will be used for our OpenGL draw calls.
-GLuint gGraphicsPipelineShaderProgram	= 0;
-
 // Camera
 Camera gCamera;
-
-/**
-* Create the graphics pipeline
-*
-* @return void
-*/
-void CreateGraphicsPipeline(){
-  std::string vertexShaderSource = LoadShaderAsString("./shaders/vert.glsl");
-  std::string fragmentShaderSource = LoadShaderAsString("./shaders/frag.glsl");
-
-	gGraphicsPipelineShaderProgram = CreateShaderProgram(vertexShaderSource,fragmentShaderSource);
-}
 
 /**
 * Initialization of the graphics application. Typically this will involve setting up a window
@@ -203,9 +184,6 @@ void CleanUp(){
 	SDL_DestroyWindow(gGraphicsApplicationWindow );
 	gGraphicsApplicationWindow = nullptr;
 
-	// Delete our Graphics pipeline
-  glDeleteProgram(gGraphicsPipelineShaderProgram);
-
 	//Quit SDL subsystems
 	SDL_Quit();
 }
@@ -223,7 +201,7 @@ int main(int argc, char* args[]) {
 
   std::vector<OBJModel> models;
   GravitySimulation simulation(0.0000001);
-  Scene scene(&gGraphicsPipelineShaderProgram, gScreenWidth, gScreenHeight, gCamera);
+  Scene scene(gScreenWidth, gScreenHeight, gCamera);
   World world;
   RenderGod renderer(world, scene);
   TerrainGod generator(world);

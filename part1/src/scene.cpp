@@ -92,6 +92,13 @@ GLuint CreateShaderProgram(const std::string& vertexShaderSource, const std::str
   return programObject;
 }
 
+GLuint CreateGraphicsPipeline() {
+  std::string vertexShaderSource = LoadShaderAsString("./shaders/vert.glsl");
+  std::string fragmentShaderSource = LoadShaderAsString("./shaders/frag.glsl");
+
+	return CreateShaderProgram(vertexShaderSource,fragmentShaderSource);
+}
+
 // encode an OBJ into VBO data
 bool encodeOBJ(OBJModel model, std::vector<VBOVertex> &data, std::vector<GLuint> &indices) {
   std::unordered_map<VBOVertex, int> processedVertices;
@@ -204,8 +211,8 @@ void Mesh::clearBuffers() {
   glDeleteBuffers(1, &buffer);
 }
 
-Scene::Scene(GLuint* graphicsPipeline, int w, int h, Camera &camera): camera(camera) {
-  pipeline = graphicsPipeline;
+Scene::Scene(int w, int h, Camera &camera): camera(camera) {
+  pipeline = CreateGraphicsPipeline();
   width = w;
   height = h;
   setupVertexArrayObject();
@@ -219,6 +226,7 @@ Scene::~Scene() {
     deleteLight(light.first);
   }
   glDeleteVertexArrays(1, &vao);
+  glDeleteProgram(pipeline);
 }
 
 void Scene::setupVertexArrayObject() {
@@ -295,7 +303,7 @@ void Scene::deleteLight(std::string name) {
 // get the uniform location and run generic checks
 GLint Scene::checkedUniformLocation(std::string uniformName) {
   const GLchar* chars = uniformName.c_str();
-  GLint u_Name = glGetUniformLocation(*pipeline, chars);
+  GLint u_Name = glGetUniformLocation(pipeline, chars);
   if (u_Name < 0){
     std::cout << "Could not find " << uniformName << ", maybe a mispelling?\n";
     exit(EXIT_FAILURE);
@@ -344,7 +352,7 @@ void Scene::predraw() {
   glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
   // Use our shader
-	glUseProgram(*pipeline);
+	glUseProgram(pipeline);
 
   // Model transformation by translating our object into world space
   glm::mat4 model = glm::translate(glm::mat4(1.0f),glm::vec3(0.0f,0.0f,0.0f)); 
