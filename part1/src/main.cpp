@@ -86,12 +86,20 @@ void InitializeProgram(){
 	}
 }
 
+struct Game {
+  World &world;
+  Scene &scene;
+  TerrainGod &terrainGod;
+  EntityGod &entityGod;
+  RenderGod &renderGod;
+};
+
 /**
 * Function called in the Main application loop to handle user input
 *
 * @return void
 */
-void Input(EntityGod &entityGod){
+void Input(Game &game) {
   // Two static variables to hold the mouse position
   static int mouseX=gScreenWidth/2;
   static int mouseY=gScreenHeight/2; 
@@ -138,9 +146,10 @@ void Input(EntityGod &entityGod){
       cumulativeDirection += walkBind.step;
     }
   }
-  entityGod.getEntity("player").step(glm::normalize(cumulativeDirection) * acceleration);
+  Entity &player = game.entityGod.getEntity("player");
+  player.step(glm::normalize(cumulativeDirection) * acceleration);
   if (state[SDL_SCANCODE_SPACE]) {
-    entityGod.getEntity("player").jump();
+    player.jump();
   }
 }
 
@@ -150,7 +159,7 @@ void Input(EntityGod &entityGod){
 *
 * @return void
 */
-void MainLoop(EntityGod &entityGod, Scene &scene){
+void MainLoop(Game &game){
     // Little trick to map mouse to center of screen always. Useful for handling 'mouselook'
     // This works because we effectively 're-center' our mouse at the start of every frame prior to detecting any mouse motion.
     SDL_WarpMouseInWindow(gGraphicsApplicationWindow,gScreenWidth/2,gScreenHeight/2);
@@ -161,18 +170,18 @@ void MainLoop(EntityGod &entityGod, Scene &scene){
     tick += 1;
     const auto frameEnd = std::chrono::steady_clock::now() + std::chrono::milliseconds(FRAMETIME_MS);
 		// Handle Input
-		Input(entityGod);
+		Input(game);
 		// Setup anything (i.e. OpenGL State) that needs to take place before draw calls
-    Entity &player = entityGod.getEntity("player");
+    Entity &player = game.entityGod.getEntity("player");
     glm::vec3 cameraOffset = glm::vec3(POSY) * player.getHitbox().dimensions.y * 0.35333f;
     glm::vec3 pos = (player.getPosition() + cameraOffset) * BLOCK_SCALE;
     gCamera.SetCameraEyePosition(pos.x, pos.y, pos.z);
 
     if (tick % 1 == 0) {
-      entityGod.update();
+      game.entityGod.update();
     }
 		// Draw Calls in OpenGL
-		scene.draw();
+		game.scene.draw();
 		//Update screen of our specified window
 		SDL_GL_SwapWindow(gGraphicsApplicationWindow);
     std::this_thread::sleep_until(frameEnd);
@@ -195,8 +204,7 @@ void CleanUp(){
 	SDL_Quit();
 }
 
-#include "glm/ext.hpp"
-#include "glm/gtx/string_cast.hpp"
+
 /**
 * The entry point into our C++ programs.
 *
@@ -206,13 +214,12 @@ int main(int argc, char* args[]) {
 	// 1. Setup the graphics program
 	InitializeProgram();
 
-  std::vector<OBJModel> models;
-  GravitySimulation simulation(0.0000001);
   Scene scene(gScreenWidth, gScreenHeight, gCamera);
   World world;
   RenderGod renderer(world, scene);
   TerrainGod generator(world);
   EntityGod entityManager(world);
+  Game game = {world, scene, generator, entityManager, renderer};
   generator.generateSpawn();
   entityManager.createEntity(Player("player", {0, 0, 0}, 0, {0, 0, 0}));
   scene.createMesh("loaded", {});
@@ -224,7 +231,7 @@ int main(int argc, char* args[]) {
   renderer.setRadius(5);
   renderer.update();
 	// 4. Call the main application loop
-	MainLoop(entityManager, scene);
+	MainLoop(game);
 
 	// 5. Call the cleanup function when our program terminates
 	CleanUp();
