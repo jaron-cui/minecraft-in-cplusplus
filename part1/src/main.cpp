@@ -25,10 +25,10 @@
 // Globals generally are prefixed with 'g' in this application.
 
 // Screen Dimensions
-int gScreenWidth 						= 640;
-int gScreenHeight 						= 480;
+int gScreenWidth = 640;
+int gScreenHeight = 480;
 SDL_Window* gGraphicsApplicationWindow 	= nullptr;
-SDL_GLContext gOpenGLContext			= nullptr;
+SDL_GLContext gOpenGLContext = nullptr;
 
 // Main loop flag
 bool gQuit = false; // If this is quit = 'true' then the program terminates.
@@ -38,37 +38,19 @@ bool gQuit = false; // If this is quit = 'true' then the program terminates.
 // program object that will be used for our OpenGL draw calls.
 GLuint gGraphicsPipelineShaderProgram	= 0;
 
-// OpenGL Objects
-// Vertex Array Object (VAO)
-GLuint vertexArrayObject = 0;
-// Vertex Buffer Object (VBO)
-GLuint  gVertexBufferObjectFloor            = 0;
-
-const int vertexDataSize = 11;
-
 // Camera
 Camera gCamera;
-
-// Draw wireframe mode
-GLenum gPolygonMode = GL_FILL;
-
-// Floor resolution
-size_t gFloorResolution = 10;
-size_t gFloorTriangles  = 0;
-
-std::unordered_map<std::string, Texture*> gTextures = {};
 
 // ^^^^^^^^^^^^^^^^^^^^^^^^ Globals ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 // vvvvvvvvvvvvvvvvvvv Error Handling Routines vvvvvvvvvvvvvvv
 static void GLClearAllErrors(){
-  while(glGetError() != GL_NO_ERROR){
-  }
+  while (glGetError() != GL_NO_ERROR) {}
 }
 
 // Returns true if we have an error
 static bool GLCheckErrorStatus(const char* function, int line){
-  while (GLenum error = glGetError()) {
+  if (GLenum error = glGetError()) {
     std::cout << "OpenGL Error:" << error << "\tLine: " << line << "\tfunction: " << function << std::endl;
     return true;
   }
@@ -256,27 +238,6 @@ void InitializeProgram(){
 	}
 }
 
-/**
-* Setup your geometry during the vertex specification step
-*
-* @return void
-*/
-/**
-* Setup your geometry during the vertex specification step
-*
-* @return void
-*/
-void VertexSpecification(){
-	// Vertex Arrays Object (VAO) Setup
-	glGenVertexArrays(1, &vertexArrayObject);
-	// We bind (i.e. select) to the Vertex Array Object (VAO) that we want to work withn.
-	glBindVertexArray(vertexArrayObject);
-	// Vertex Buffer Object (VBO) creation
-	glGenBuffers(1, &gVertexBufferObjectFloor);
-	// Unbind our currently bound Vertex Array Object
-	glBindVertexArray(0);
-}
-
 // get the uniform location and run generic checks
 GLint checkedUniformLocation(std::string uniformName) {
   const GLchar* chars = uniformName.c_str();
@@ -301,7 +262,7 @@ void PreDraw(Scene* scene){
   glEnable(GL_CULL_FACE);
 
   // Set the polygon fill mode
-  glPolygonMode(GL_FRONT_AND_BACK,gPolygonMode);
+  glPolygonMode(GL_FRONT, GL_FILL);
 
   // Initialize clear color
   // This is the background of the screen.
@@ -480,30 +441,13 @@ void CleanUp(){
 	SDL_DestroyWindow(gGraphicsApplicationWindow );
 	gGraphicsApplicationWindow = nullptr;
 
-    // Delete our OpenGL Objects
-  glDeleteBuffers(1, &gVertexBufferObjectFloor);
-  glDeleteVertexArrays(1, &vertexArrayObject);
-
 	// Delete our Graphics pipeline
-    glDeleteProgram(gGraphicsPipelineShaderProgram);
+  glDeleteProgram(gGraphicsPipelineShaderProgram);
 
 	//Quit SDL subsystems
 	SDL_Quit();
 }
 
-
-bool tryLoadingTexture(std::string path) {
-  std::cout << "Loading texture at " << path << std::endl;
-  if (gTextures.find(path) != gTextures.end()) {
-    return false;
-  }
-
-  Texture *t = new Texture();
-  t->LoadTexture(path);
-  t->Bind(gTextures.size());
-  gTextures[path] = t;
-  return true;
-}
 #include "glm/ext.hpp"
 #include "glm/gtx/string_cast.hpp"
 /**
@@ -514,13 +458,10 @@ bool tryLoadingTexture(std::string path) {
 int main(int argc, char* args[]) {
 	// 1. Setup the graphics program
 	InitializeProgram();
-	
-	// 2. Setup our geometry
-	VertexSpecification();
 
   std::vector<OBJModel> models;
   GravitySimulation simulation(0.0000001);
-  Scene scene(&gGraphicsPipelineShaderProgram, &vertexArrayObject);
+  Scene scene(&gGraphicsPipelineShaderProgram);
   ProgramSession state(models, &simulation, &scene);
   World world;
   RenderGod renderer(world, scene);

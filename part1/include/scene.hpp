@@ -63,12 +63,13 @@ struct PointLight{
 class Scene {
   private:
     GLuint* pipeline;
-    GLuint* vao;
+    GLuint vao;
     std::unordered_map<std::string, Mesh*> meshes;
     std::unordered_map<std::string, PointLight*> lights;
     std::unordered_map<std::string, Texture*> textures;
+    void setupVertexArrayObject();
   public:
-    Scene(GLuint* graphicsPipeline, GLuint* vertexArrayObject);
+    Scene(GLuint* graphicsPipeline);
     ~Scene();
     bool createMesh(std::string name, OBJModel obj);
     Mesh* getMesh(std::string name);
@@ -117,42 +118,3 @@ namespace std {
     }
   };
 }
-
-// struct VBOVertex {
-//   float x, y, z;
-//   float nx, ny, nz;
-//   uint8_t tile;
-//   VBOVertex(glm::vec3 position, glm::vec3 normal, uint8_t blockType) {
-//     x = position.x;
-//     y = position.y;
-//     z = position.z;
-//     nx = normal.x;
-//     ny = normal.y;
-//     nz = normal.z;
-//     tile = blockType;
-//   }
-
-//   inline bool operator==(const VBOVertex &other) const {
-//       // bool comparison = result of comparing 'this' to 'other'
-//       // return x == other.x && y == other.y && z == other.z
-//       //     && r == other.r && g == other.g && b == other.b
-//       //     && nx == other.nx && ny == other.ny && nz == other.nz
-//       //     && tx == other.tx && ty == other.ty;
-//       return x == other.x && y == other.y && z == other.z
-//           && nx == other.nx && ny == other.ny && nz == other.nz
-//           && tile == other.tile;
-//   }
-// };
-
-// namespace std {
-//   template<>
-//   struct hash<VBOVertex> {
-//     inline size_t operator()(const VBOVertex& x) const {
-//       return x.x + x.y * 3 + x.z * 5
-//           // + x.r * 7 + x.g * 11 + x.b * 13
-//           + x.nx * 17 + x.ny * 19 + x.nz * 23
-//           // + x.tx * 29 + x.ty * 31;
-//           + x.tile * 43;
-//     }
-//   };
-// }

@@ -111,9 +111,9 @@ void Mesh::clearBuffers() {
   glDeleteBuffers(1, &buffer);
 }
 
-Scene::Scene(GLuint* graphicsPipeline, GLuint* vertexArrayObject) {
+Scene::Scene(GLuint* graphicsPipeline) {
   pipeline = graphicsPipeline;
-  vao = vertexArrayObject;
+  setupVertexArrayObject();
 }
 
 Scene::~Scene() {
@@ -123,6 +123,16 @@ Scene::~Scene() {
   for (auto light : lights) {
     deleteLight(light.first);
   }
+  glDeleteVertexArrays(1, &vao);
+}
+
+void Scene::setupVertexArrayObject() {
+  // Vertex Arrays Object (VAO) Setup
+	glGenVertexArrays(1, &vao);
+	// We bind (i.e. select) to the Vertex Array Object (VAO) that we want to work withn.
+	glBindVertexArray(vao);
+	// Unbind our currently bound Vertex Array Object
+	glBindVertexArray(0);
 }
 
 bool tryLoadingTexture(std::string path, std::unordered_map<std::string, Texture*> &map) {
@@ -143,7 +153,7 @@ bool Scene::createMesh(std::string name, OBJModel obj) {
     return false;
   }
   // std::cout << "creating mesh" << std::endl;
-  Mesh* mesh = new Mesh(*vao, obj);
+  Mesh* mesh = new Mesh(vao, obj);
   // std::cout << "storing mesh" << std::endl;
   meshes[name] = mesh;
   tryLoadingTexture(obj.mtl.mapKD, textures);
@@ -223,9 +233,27 @@ void Scene::uploadUniforms() {
   }
 }
 
+void predraw() {
+  // position
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (void*)0);
+  // Normal information (nx,ny,nz)
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*6));
+  // texture coordinate
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*9));
+}
+
+void postdraw() {
+  glDisableVertexAttribArray(0);
+  glDisableVertexAttribArray(1);
+  glDisableVertexAttribArray(2);
+}
+
 void Scene::draw(){
   // Enable our attributes
-	glBindVertexArray(*vao);
+	glBindVertexArray(vao);
   //Render data
   for (auto entry : meshes) {
     Mesh* mesh = entry.second;
@@ -237,21 +265,9 @@ void Scene::draw(){
 
     glBindBuffer(GL_ARRAY_BUFFER, mesh->getVBO());
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->getElementBuffer());
-    // position
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (void*)0);
-    // Normal information (nx,ny,nz)
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*6));
-    // texture coordinate
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*9));
-
+    predraw();
     glDrawElements(GL_TRIANGLES, mesh->getElementBufferSize(), GL_UNSIGNED_INT, (void*)(0 * sizeof(GLuint)));
-
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
-    glDisableVertexAttribArray(2);
+    postdraw();
   }
 	glBindVertexArray(0);
 
