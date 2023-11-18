@@ -342,7 +342,7 @@ GLint checkedUniformLocation(std::string uniformName) {
 void PreDraw(Scene* scene){
 	// Disable depth test and face culling.
     glEnable(GL_DEPTH_TEST);                    // NOTE: Need to enable DEPTH Test
-    glDisable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
 
     // Set the polygon fill mode
     glPolygonMode(GL_FRONT_AND_BACK,gPolygonMode);
