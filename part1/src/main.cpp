@@ -40,7 +40,7 @@ GLuint gGraphicsPipelineShaderProgram	= 0;
 
 // OpenGL Objects
 // Vertex Array Object (VAO)
-GLuint gVertexArrayObjectFloor= 0;
+GLuint vertexArrayObject = 0;
 // Vertex Buffer Object (VBO)
 GLuint  gVertexBufferObjectFloor            = 0;
 
@@ -60,28 +60,23 @@ std::unordered_map<std::string, Texture*> gTextures = {};
 
 // ^^^^^^^^^^^^^^^^^^^^^^^^ Globals ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-
 // vvvvvvvvvvvvvvvvvvv Error Handling Routines vvvvvvvvvvvvvvv
 static void GLClearAllErrors(){
-    while(glGetError() != GL_NO_ERROR){
-    }
+  while(glGetError() != GL_NO_ERROR){
+  }
 }
 
 // Returns true if we have an error
 static bool GLCheckErrorStatus(const char* function, int line){
-    while(GLenum error = glGetError()){
-        std::cout << "OpenGL Error:" << error 
-                  << "\tLine: " << line 
-                  << "\tfunction: " << function << std::endl;
-        return true;
-    }
-    return false;
+  while (GLenum error = glGetError()) {
+    std::cout << "OpenGL Error:" << error << "\tLine: " << line << "\tfunction: " << function << std::endl;
+    return true;
+  }
+  return false;
 }
 
 #define GLCheck(x) GLClearAllErrors(); x; GLCheckErrorStatus(#x,__LINE__);
 // ^^^^^^^^^^^^^^^^^^^ Error Handling Routines ^^^^^^^^^^^^^^^
-
-
 
 /**
 * LoadShaderAsString takes a filepath as an argument and will read line by line a file and return a string that is meant to be compiled at runtime for a vertex, fragment, geometry, tesselation, or compute shader.
@@ -92,21 +87,20 @@ static bool GLCheckErrorStatus(const char* function, int line){
 * @return Entire file stored as a single string 
 */
 std::string LoadShaderAsString(const std::string& filename){
-    // Resulting shader program loaded as a single string
-    std::string result = "";
+  // Resulting shader program loaded as a single string
+  std::string result = "";
 
-    std::string line = "";
-    std::ifstream myFile(filename.c_str());
+  std::string line = "";
+  std::ifstream myFile(filename.c_str());
 
-    if(myFile.is_open()){
-        while(std::getline(myFile, line)){
-            result += line + '\n';
-        }
-        myFile.close();
-
+  if (myFile.is_open()) {
+    while (std::getline(myFile, line)) {
+      result += line + '\n';
     }
+    myFile.close();
+  }
 
-    return result;
+  return result;
 }
 
 /**
@@ -125,9 +119,9 @@ GLuint CompileShader(GLuint type, const std::string& source){
 
 	// Based on the type passed in, we create a shader object specifically for that
 	// type.
-	if(type == GL_VERTEX_SHADER){
+	if (type == GL_VERTEX_SHADER){
 		shaderObject = glCreateShader(GL_VERTEX_SHADER);
-	}else if(type == GL_FRAGMENT_SHADER){
+	} else if (type == GL_FRAGMENT_SHADER){
 		shaderObject = glCreateShader(GL_FRAGMENT_SHADER);
 	}
 
@@ -148,9 +142,9 @@ GLuint CompileShader(GLuint type, const std::string& source){
 		char* errorMessages = new char[length]; // Could also use alloca here.
 		glGetShaderInfoLog(shaderObject, length, &length, errorMessages);
 
-		if(type == GL_VERTEX_SHADER){
+		if (type == GL_VERTEX_SHADER){
 			std::cout << "ERROR: GL_VERTEX_SHADER compilation failed!\n" << errorMessages << "\n";
-		}else if(type == GL_FRAGMENT_SHADER){
+		} else if (type == GL_FRAGMENT_SHADER){
 			std::cout << "ERROR: GL_FRAGMENT_SHADER compilation failed!\n" << errorMessages << "\n";
 		}
 		// Reclaim our memory
@@ -173,35 +167,33 @@ GLuint CompileShader(GLuint type, const std::string& source){
 * @return id of the program Object
 */
 GLuint CreateShaderProgram(const std::string& vertexShaderSource, const std::string& fragmentShaderSource){
+  // Create a new program object
+  GLuint programObject = glCreateProgram();
 
-    // Create a new program object
-    GLuint programObject = glCreateProgram();
+  // Compile our shaders
+  GLuint myVertexShader   = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
+  GLuint myFragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
 
-    // Compile our shaders
-    GLuint myVertexShader   = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
-    GLuint myFragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-
-    // Link our two shader programs together.
+  // Link our two shader programs together.
 	// Consider this the equivalent of taking two .cpp files, and linking them into
 	// one executable file.
-    glAttachShader(programObject,myVertexShader);
-    glAttachShader(programObject,myFragmentShader);
-    glLinkProgram(programObject);
+  glAttachShader(programObject,myVertexShader);
+  glAttachShader(programObject,myFragmentShader);
+  glLinkProgram(programObject);
 
-    // Validate our program
-    glValidateProgram(programObject);
+  // Validate our program
+  glValidateProgram(programObject);
 
-    // Once our final program Object has been created, we can
+  // Once our final program Object has been created, we can
 	// detach and then delete our individual shaders.
-    glDetachShader(programObject,myVertexShader);
-    glDetachShader(programObject,myFragmentShader);
+  glDetachShader(programObject,myVertexShader);
+  glDetachShader(programObject,myFragmentShader);
 	// Delete the individual shaders once we are done
-    glDeleteShader(myVertexShader);
-    glDeleteShader(myFragmentShader);
+  glDeleteShader(myVertexShader);
+  glDeleteShader(myFragmentShader);
 
-    return programObject;
+  return programObject;
 }
-
 
 /**
 * Create the graphics pipeline
@@ -209,9 +201,8 @@ GLuint CreateShaderProgram(const std::string& vertexShaderSource, const std::str
 * @return void
 */
 void CreateGraphicsPipeline(){
-
-  std::string vertexShaderSource      = LoadShaderAsString("./shaders/vert.glsl");
-  std::string fragmentShaderSource    = LoadShaderAsString("./shaders/frag.glsl");
+  std::string vertexShaderSource = LoadShaderAsString("./shaders/vert.glsl");
+  std::string fragmentShaderSource = LoadShaderAsString("./shaders/frag.glsl");
 
 	gGraphicsPipelineShaderProgram = CreateShaderProgram(vertexShaderSource,fragmentShaderSource);
 }
@@ -240,12 +231,10 @@ void InitializeProgram(){
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
 	// Create an application window using OpenGL that supports SDL
-	gGraphicsApplicationWindow = SDL_CreateWindow( "Tesselation",
-													SDL_WINDOWPOS_UNDEFINED,
-													SDL_WINDOWPOS_UNDEFINED,
-													gScreenWidth,
-													gScreenHeight,
-													SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
+	gGraphicsApplicationWindow = SDL_CreateWindow(
+    "Tesselation", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+    gScreenWidth, gScreenHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
+    );
 
 	// Check if Window did not create.
 	if( gGraphicsApplicationWindow == nullptr ){
@@ -265,7 +254,6 @@ void InitializeProgram(){
 		std::cout << "glad did not initialize" << std::endl;
 		exit(1);
 	}
-	
 }
 
 /**
@@ -279,46 +267,14 @@ void InitializeProgram(){
 * @return void
 */
 void VertexSpecification(){
-
 	// Vertex Arrays Object (VAO) Setup
-	glGenVertexArrays(1, &gVertexArrayObjectFloor);
+	glGenVertexArrays(1, &vertexArrayObject);
 	// We bind (i.e. select) to the Vertex Array Object (VAO) that we want to work withn.
-	glBindVertexArray(gVertexArrayObjectFloor);
+	glBindVertexArray(vertexArrayObject);
 	// Vertex Buffer Object (VBO) creation
 	glGenBuffers(1, &gVertexBufferObjectFloor);
-
-    // Generate our data for the buffer
-    // GeneratePlaneBufferData();
- 
-    // =============================
-    // offsets every 3 floats
-    // v     v     v
-    // 
-    // x,y,z,r,g,b,nx,ny,nz
-    //
-    // |------------------| strides is '9' floats
-    //
-    // ============================
-    // Position information (x,y,z)
-	glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,sizeof(GL_FLOAT)*vertexDataSize,(void*)0);
-    // Color information (r,g,b)
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,sizeof(GL_FLOAT)*vertexDataSize,(GLvoid*)(sizeof(GL_FLOAT)*3));
-    // Normal information (nx,ny,nz)
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE,sizeof(GL_FLOAT)*vertexDataSize, (GLvoid*)(sizeof(GL_FLOAT)*6));
-    // Texture information (tx, ty)
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE,sizeof(GL_FLOAT)*vertexDataSize, (GLvoid*)(sizeof(GL_FLOAT)*9));
-
 	// Unbind our currently bound Vertex Array Object
 	glBindVertexArray(0);
-	// Disable any attributes we opened in our Vertex Attribute Arrray,
-	// as we do not want to leave them open. 
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(2);
 }
 
 // get the uniform location and run generic checks
@@ -341,71 +297,51 @@ GLint checkedUniformLocation(std::string uniformName) {
 */
 void PreDraw(Scene* scene){
 	// Disable depth test and face culling.
-    glEnable(GL_DEPTH_TEST);                    // NOTE: Need to enable DEPTH Test
-    glEnable(GL_CULL_FACE);
+  glEnable(GL_DEPTH_TEST);                    // NOTE: Need to enable DEPTH Test
+  glEnable(GL_CULL_FACE);
 
-    // Set the polygon fill mode
-    glPolygonMode(GL_FRONT_AND_BACK,gPolygonMode);
+  // Set the polygon fill mode
+  glPolygonMode(GL_FRONT_AND_BACK,gPolygonMode);
 
-    // Initialize clear color
-    // This is the background of the screen.
-    glViewport(0, 0, gScreenWidth, gScreenHeight);
-    glClearColor( 0.1f, 4.f, 7.f, 1.f );
+  // Initialize clear color
+  // This is the background of the screen.
+  glViewport(0, 0, gScreenWidth, gScreenHeight);
+  glClearColor( 0.1f, 4.f, 7.f, 1.f );
 
-    //Clear color buffer and Depth Buffer
-  	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+  //Clear color buffer and Depth Buffer
+  glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-    // Use our shader
+  // Use our shader
 	glUseProgram(gGraphicsPipelineShaderProgram);
 
-    // Model transformation by translating our object into world space
-    glm::mat4 model = glm::translate(glm::mat4(1.0f),glm::vec3(0.0f,0.0f,0.0f)); 
+  // Model transformation by translating our object into world space
+  glm::mat4 model = glm::translate(glm::mat4(1.0f),glm::vec3(0.0f,0.0f,0.0f)); 
 
+  // Retrieve our location of our Model Matrix
+  GLint u_ModelMatrixLocation = checkedUniformLocation("u_ModelMatrix");
+  glUniformMatrix4fv(u_ModelMatrixLocation,1,GL_FALSE,&model[0][0]);
 
-    // Retrieve our location of our Model Matrix
-    GLint u_ModelMatrixLocation = glGetUniformLocation( gGraphicsPipelineShaderProgram,"u_ModelMatrix");
-    if(u_ModelMatrixLocation >=0){
-        glUniformMatrix4fv(u_ModelMatrixLocation,1,GL_FALSE,&model[0][0]);
-    }else{
-        std::cout << "Could not find u_ModelMatrix, maybe a mispelling?\n";
-        exit(EXIT_FAILURE);
-    }
+  // Update the View Matrix
+  GLint u_ViewMatrixLocation = checkedUniformLocation("u_ViewMatrix");
+  glm::mat4 viewMatrix = gCamera.GetViewMatrix();
+  glUniformMatrix4fv(u_ViewMatrixLocation,1,GL_FALSE,&viewMatrix[0][0]);
 
+  // Projection matrix (in perspective) 
+  glm::mat4 perspective = glm::perspective(
+    glm::radians(45.0f), (float) gScreenWidth / gScreenHeight, 0.1f, 20.0f);
 
-    // Update the View Matrix
-    GLint u_ViewMatrixLocation = glGetUniformLocation(gGraphicsPipelineShaderProgram,"u_ViewMatrix");
-    if(u_ViewMatrixLocation>=0){
-        glm::mat4 viewMatrix = gCamera.GetViewMatrix();
-        glUniformMatrix4fv(u_ViewMatrixLocation,1,GL_FALSE,&viewMatrix[0][0]);
-    }else{
-        std::cout << "Could not find u_ModelMatrix, maybe a mispelling?\n";
-        exit(EXIT_FAILURE);
-    }
+  // Retrieve our location of our perspective matrix uniform 
+  GLint u_ProjectionLocation = checkedUniformLocation("u_Projection");
+  glUniformMatrix4fv(u_ProjectionLocation,1,GL_FALSE,&perspective[0][0]);
 
+  GLint u_viewPosition = checkedUniformLocation("u_viewPosition");
+  glm::vec3 cameraPosition = glm::vec3(gCamera.getPosition());
+  glUniform3fv(u_viewPosition, 1, &cameraPosition[0]);
 
-    // Projection matrix (in perspective) 
-    glm::mat4 perspective = glm::perspective(glm::radians(45.0f),
-                                             (float)gScreenWidth/(float)gScreenHeight,
-                                             0.1f,
-                                             20.0f);
+  scene->uploadUniforms();
 
-    // Retrieve our location of our perspective matrix uniform 
-    GLint u_ProjectionLocation= glGetUniformLocation( gGraphicsPipelineShaderProgram,"u_Projection");
-    if(u_ProjectionLocation>=0){
-        glUniformMatrix4fv(u_ProjectionLocation,1,GL_FALSE,&perspective[0][0]);
-    }else{
-        std::cout << "Could not find u_Perspective, maybe a mispelling?\n";
-        exit(EXIT_FAILURE);
-    }
-
-    GLint u_viewPosition = checkedUniformLocation("u_viewPosition");
-    glm::vec3 cameraPosition = glm::vec3(gCamera.getPosition());
-    glUniform3fv(u_viewPosition, 1, &cameraPosition[0]);
-
-    scene->uploadUniforms();
-
-    GLint u_DiffuseTexture = checkedUniformLocation("u_DiffuseTexture");
-    glUniform1i(u_DiffuseTexture, 0);
+  GLint u_DiffuseTexture = checkedUniformLocation("u_DiffuseTexture");
+  glUniform1i(u_DiffuseTexture, 0);
 }
 
 /**
@@ -418,27 +354,6 @@ void PreDraw(Scene* scene){
 */
 void Draw(Scene* scene){
   scene->draw();
-}
-
-/**
-* Helper Function to get OpenGL Version Information
-*
-* @return void
-*/
-void getOpenGLVersionInfo(){
-  std::cout << "Vendor: " << glGetString(GL_VENDOR) << "\n";
-  std::cout << "Renderer: " << glGetString(GL_RENDERER) << "\n";
-  std::cout << "Version: " << glGetString(GL_VERSION) << "\n";
-  std::cout << "Shading language: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
-}
-
-void setModel(Scene* scene, OBJModel model) {
-  scene->getMesh("loaded")->setVBOfromOBJ(model);
-    // if (loadedMesh != nullptr) {
-    //   delete loadedMesh;
-    //   loadedMesh = nullptr;
-    // }
-    // loadedMesh = new Mesh(model);
 }
 
 /**
@@ -462,82 +377,42 @@ void Input(Scene* scene, std::vector<OBJModel> models, EntityGod &entityGod){
 			std::cout << "Goodbye! (Leaving MainApplicationLoop())" << std::endl;
 			gQuit = true;
 		}
-        if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE){
-			std::cout << "ESC: Goodbye! (Leaving MainApplicationLoop())" << std::endl;
-            gQuit = true;
-        }
-        if(e.type==SDL_MOUSEMOTION){
-            // Capture the change in the mouse position
-            mouseX+=e.motion.xrel;
-            mouseY+=e.motion.yrel;
-            gCamera.MouseLook(mouseX,mouseY);
-        }
+    if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
+      std::cout << "ESC: Goodbye! (Leaving MainApplicationLoop())" << std::endl;
+      gQuit = true;
+    }
+    if(e.type==SDL_MOUSEMOTION){
+      // Capture the change in the mouse position
+      mouseX+=e.motion.xrel;
+      mouseY+=e.motion.yrel;
+      gCamera.MouseLook(mouseX,mouseY);
+    }
 	}
 
-    // Retrieve keyboard state
-    const Uint8 *state = SDL_GetKeyboardState(NULL);
-    if (state[SDL_SCANCODE_UP]) {
-        SDL_Delay(250);
-        gFloorResolution+=1;
-        std::cout << "Resolution:" << gFloorResolution << std::endl;
-        // GeneratePlaneBufferData();
-    }
-    if (state[SDL_SCANCODE_DOWN]) {
-        SDL_Delay(250); 
-        gFloorResolution-=1;
-        if(gFloorResolution<=1){
-            gFloorResolution=1;
-        }
-        std::cout << "Resolution:" << gFloorResolution << std::endl;
-        // GeneratePlaneBufferData();
-    }
+  // Retrieve keyboard state
+  const Uint8 *state = SDL_GetKeyboardState(NULL);
 
-    // Camera
-    // Update our position of the camera
-    float acceleration = 0.008;
-    glm::vec3 forwardStepDirection = glm::normalize(gCamera.getDirection() * glm::vec3(1, 0, 1));
-    glm::vec3 cumulativeDirection = glm::vec3(0, 0, 0);
-    if (state[SDL_SCANCODE_W]) {
-      cumulativeDirection += forwardStepDirection;
-    }
-    if (state[SDL_SCANCODE_S]) {
-      cumulativeDirection -= forwardStepDirection;
-    }
-    if (state[SDL_SCANCODE_A]) {
-      cumulativeDirection += glm::vec3(forwardStepDirection.z, 0, -forwardStepDirection.x);
-    }
-    if (state[SDL_SCANCODE_D]) {
-      cumulativeDirection += glm::vec3(-forwardStepDirection.z, 0, forwardStepDirection.x);
-    }
-    entityGod.getEntity("player").step(glm::normalize(cumulativeDirection) * acceleration);
-    if (state[SDL_SCANCODE_SPACE]) {
-      entityGod.getEntity("player").jump();
-    }
-    // if (state[SDL_SCANCODE_RIGHT]) {
-    //   SDL_Delay(100);
-    //   entityGod.update();
-    // }
-
-    for (int numberKey = SDL_SCANCODE_1; numberKey < SDL_SCANCODE_0; numberKey += 1) {
-      if (state[numberKey]) {
-        int modelIndex = numberKey - SDL_SCANCODE_1;
-        if (modelIndex < models.size()) {
-          SDL_Delay(250);
-          setModel(scene, models.at(modelIndex));
-        }
-      }
-    }
-    if (state[SDL_SCANCODE_TAB]) {
-        SDL_Delay(250); // This is hacky in the name of simplicity,
-                       // but we just delay the
-                       // system by a few milli-seconds to process the 
-                       // keyboard input once at a time.
-        if(gPolygonMode== GL_FILL){
-            gPolygonMode = GL_LINE;
-        }else{
-            gPolygonMode = GL_FILL;
-        }
-    }
+  // Camera
+  // Update our position of the camera
+  float acceleration = 0.008;
+  glm::vec3 forwardStepDirection = glm::normalize(gCamera.getDirection() * glm::vec3(1, 0, 1));
+  glm::vec3 cumulativeDirection = glm::vec3(0, 0, 0);
+  if (state[SDL_SCANCODE_W]) {
+    cumulativeDirection += forwardStepDirection;
+  }
+  if (state[SDL_SCANCODE_S]) {
+    cumulativeDirection -= forwardStepDirection;
+  }
+  if (state[SDL_SCANCODE_A]) {
+    cumulativeDirection += glm::vec3(forwardStepDirection.z, 0, -forwardStepDirection.x);
+  }
+  if (state[SDL_SCANCODE_D]) {
+    cumulativeDirection += glm::vec3(-forwardStepDirection.z, 0, forwardStepDirection.x);
+  }
+  entityGod.getEntity("player").step(glm::normalize(cumulativeDirection) * acceleration);
+  if (state[SDL_SCANCODE_SPACE]) {
+    entityGod.getEntity("player").jump();
+  }
 }
 
 class ProgramSession {
@@ -557,24 +432,8 @@ class ProgramSession {
     if (tickCount < 1000 || tickCount % 5 != 0) {
       return;
     }
-    gravitySimulation->advance();
-    GravitationalBody planet1 = gravitySimulation->getBody("planet1");
-    GravitationalBody planet2 = gravitySimulation->getBody("planet2");
-    GravitationalBody sun = gravitySimulation->getBody("sun");
-
-    scene->getMesh("planet1")->setPosition(planet1.position);
-    //scene->getMesh("sun")->setPosition(sun.position);
-    scene->getMesh("planet2")->setPosition(planet2.position);
-
-    scene->getLight("planet1")->lightPos = planet1.position;
-    scene->getLight("sun")->lightPos = sun.position;
-    scene->getLight("planet2")->lightPos = planet2.position;
   }
 };
-
-void printVec(glm::vec3 vec) {
-  std::cout << vec[0] << ", " << vec[1] << ", " << vec[2] << std::endl;
-}
 
 /**
 * Main Application Loop
@@ -622,8 +481,8 @@ void CleanUp(){
 	gGraphicsApplicationWindow = nullptr;
 
     // Delete our OpenGL Objects
-    glDeleteBuffers(1, &gVertexBufferObjectFloor);
-    glDeleteVertexArrays(1, &gVertexArrayObjectFloor);
+  glDeleteBuffers(1, &gVertexBufferObjectFloor);
+  glDeleteVertexArrays(1, &vertexArrayObject);
 
 	// Delete our Graphics pipeline
     glDeleteProgram(gGraphicsPipelineShaderProgram);
@@ -652,89 +511,29 @@ bool tryLoadingTexture(std::string path) {
 *
 * @return program status
 */
-int main( int argc, char* args[] ){
-  // Image texture("media/textures.ppm");
-  // texture.LoadPPM(false);
-  // OBJBuilder builder;
-  // addFaceVertices(&builder, {glm::ivec3(0, 0, 0), glm::ivec3(-1, 0, 0)});
-  // for (Face face : builder.model.faces) {
-  //   std::cout << "Face vertex indices: ";
-  //   for (VertexDescriptor vd : face.vertexDescriptors) {
-  //     std::cout << vd.vertex << ", ";
-  //   }
-  //   std::cout << std::endl;
-  // }
-  // std::cout << "Vertices: " << std::endl;
-  // for (glm::vec3 vertex : builder.model.vertices) {
-  //   std::cout << glm::to_string(vertex) << std::endl;
-  // }
-  // //std::cout << glm::to_string(glm::vec3(glm::ivec3(1, 1, 0)) * 0.5f) << std::endl;
-  // return 0;
-  std::cout << "Use w and s keys to move forward and back\n";
-  std::cout << "Use up and down to change tessellation\n";
-  std::cout << "Use 1 to toggle wireframe\n";
-  std::cout << "Press ESC to quit\n";
-  std::vector<OBJModel> models;
-  for (int i = 1; i < argc; i += 1) {
-    models.push_back(loadOBJ(args[i]));
-  }
-
+int main(int argc, char* args[]) {
 	// 1. Setup the graphics program
 	InitializeProgram();
 	
 	// 2. Setup our geometry
 	VertexSpecification();
 
-  // describes a cube geometry in OBJ format
-  OBJModel model = UNIT_CUBE();
-
+  std::vector<OBJModel> models;
   GravitySimulation simulation(0.0000001);
-  Scene scene(&gGraphicsPipelineShaderProgram, &gVertexArrayObjectFloor);
+  Scene scene(&gGraphicsPipelineShaderProgram, &vertexArrayObject);
   ProgramSession state(models, &simulation, &scene);
   World world;
   RenderGod renderer(world, scene);
   TerrainGod generator(world);
   EntityGod entityManager(world);
   generator.generateSpawn();
-  std::cout << "chunks: " << world.hasChunk({0, 0, 0}) << std::endl;
   entityManager.createEntity(Player("player", {0, 0, 0}, 0, {0, 0, 0}));
-  std::cout << "chunks: " << world.hasChunk({0, 0, 0}) << std::endl;
   scene.createMesh("loaded", {});
 
-  // gravitational anchor
-  GravitationalBody sun = {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 100};
-  simulation.addBody("sun", &sun);
-  PointLight sunLight = {{0.8f, 0.7f, 0.6f}, {0.0f, 10.0f, 0.0f}, 0.6, 0.5};
-  //scene.createMesh("sun", model);
-  // scene.getMesh("sun")->setScale(.1);
-  scene.createLight("sun", sunLight);
-  // close glowing planet
-  GravitationalBody planet1 = {{1.3f, -0.1f, 0.0f}, {0.0f, 0.0005f, 0.002f}, 0.5};
-  simulation.addBody("planet1", &planet1);
-  PointLight planet1Light = {{0.7f, 0.2f, 0.0f}, {0.0f, 10.0f, 0.0f}, 0.02, 0.2};
-  scene.createMesh("planet1", model);
-  scene.getMesh("planet1")->setScale(.04);
-  scene.createLight("planet1", planet1Light);
-  // far glowing planet
-  GravitationalBody planet2 = {{-1.5f, 0.2f, 0.0f}, {0.0f, -0.0005f, -0.002f}, 0.2};
-  simulation.addBody("planet2", &planet2);
-  PointLight planet2Light = {{0.0f, 0.0f, 0.6f}, {0.0f, 10.0f, 0.0f}, 0.02, 0.5};
-  scene.createMesh("planet2", model);
-  scene.getMesh("planet2")->setScale(.02);
-  scene.createLight("planet2", planet2Light);
-	
 	// 3. Create our graphics pipeline
-	// 	- At a minimum, this means the vertex and fragment shader
 	CreateGraphicsPipeline();
-  // make meshes for each of the planets
-  for (OBJModel model : models) {
-    if (model.mtl.mapKD.length() != 0) {
-      tryLoadingTexture(model.mtl.mapKD);
-    }
-  }
 
   renderer.setOrigin({0, 0, 0});
-  std::cout << "chunks: " << world.hasChunk({0, 0, 0}) << std::endl;
   renderer.setRadius(5);
   renderer.update();
 	// 4. Call the main application loop
