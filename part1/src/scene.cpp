@@ -1,5 +1,97 @@
 #include "scene.hpp"
 
+std::string LoadShaderAsString(const std::string& filename){
+  // Resulting shader program loaded as a single string
+  std::string result = "";
+
+  std::string line = "";
+  std::ifstream myFile(filename.c_str());
+
+  if (myFile.is_open()) {
+    while (std::getline(myFile, line)) {
+      result += line + '\n';
+    }
+    myFile.close();
+  }
+
+  return result;
+}
+
+GLuint CompileShader(GLuint type, const std::string& source){
+	// Compile our shaders
+	GLuint shaderObject;
+
+	// Based on the type passed in, we create a shader object specifically for that
+	// type.
+	if (type == GL_VERTEX_SHADER){
+		shaderObject = glCreateShader(GL_VERTEX_SHADER);
+	} else if (type == GL_FRAGMENT_SHADER){
+		shaderObject = glCreateShader(GL_FRAGMENT_SHADER);
+	}
+
+	const char* src = source.c_str();
+	// The source of our shader
+	glShaderSource(shaderObject, 1, &src, nullptr);
+	// Now compile our shader
+	glCompileShader(shaderObject);
+
+	// Retrieve the result of our compilation
+	int result;
+	// Our goal with glGetShaderiv is to retrieve the compilation status
+	glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &result);
+
+	if(result == GL_FALSE){
+		int length;
+		glGetShaderiv(shaderObject, GL_INFO_LOG_LENGTH, &length);
+		char* errorMessages = new char[length]; // Could also use alloca here.
+		glGetShaderInfoLog(shaderObject, length, &length, errorMessages);
+
+		if (type == GL_VERTEX_SHADER){
+			std::cout << "ERROR: GL_VERTEX_SHADER compilation failed!\n" << errorMessages << "\n";
+		} else if (type == GL_FRAGMENT_SHADER){
+			std::cout << "ERROR: GL_FRAGMENT_SHADER compilation failed!\n" << errorMessages << "\n";
+		}
+		// Reclaim our memory
+		delete[] errorMessages;
+
+		// Delete our broken shader
+		glDeleteShader(shaderObject);
+
+		return 0;
+	}
+
+  return shaderObject;
+}
+
+GLuint CreateShaderProgram(const std::string& vertexShaderSource, const std::string& fragmentShaderSource){
+  // Create a new program object
+  GLuint programObject = glCreateProgram();
+
+  // Compile our shaders
+  GLuint myVertexShader   = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
+  GLuint myFragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
+
+  // Link our two shader programs together.
+	// Consider this the equivalent of taking two .cpp files, and linking them into
+	// one executable file.
+  glAttachShader(programObject,myVertexShader);
+  glAttachShader(programObject,myFragmentShader);
+  glLinkProgram(programObject);
+
+  // Validate our program
+  glValidateProgram(programObject);
+
+  // Once our final program Object has been created, we can
+	// detach and then delete our individual shaders.
+  glDetachShader(programObject,myVertexShader);
+  glDetachShader(programObject,myFragmentShader);
+	// Delete the individual shaders once we are done
+  glDeleteShader(myVertexShader);
+  glDeleteShader(myFragmentShader);
+
+  return programObject;
+}
+
 // encode an OBJ into VBO data
 bool encodeOBJ(OBJModel model, std::vector<VBOVertex> &data, std::vector<GLuint> &indices) {
   std::unordered_map<VBOVertex, int> processedVertices;
@@ -100,6 +192,7 @@ Mesh::Mesh(GLuint vao, OBJModel model) {
   glBindVertexArray(vao);
   glGenBuffers(1, &vbo);
   glGenBuffers(1, &buffer);
+
   glBindVertexArray(0);
 
   baseModel = model;
@@ -111,8 +204,10 @@ void Mesh::clearBuffers() {
   glDeleteBuffers(1, &buffer);
 }
 
-Scene::Scene(GLuint* graphicsPipeline) {
+Scene::Scene(GLuint* graphicsPipeline, int w, int h, Camera &camera): camera(camera) {
   pipeline = graphicsPipeline;
+  width = w;
+  height = h;
   setupVertexArrayObject();
 }
 
@@ -198,9 +293,9 @@ void Scene::deleteLight(std::string name) {
 }
 
 // get the uniform location and run generic checks
-GLint checkedUniformLocation(GLuint pipeline, std::string uniformName) {
+GLint Scene::checkedUniformLocation(std::string uniformName) {
   const GLchar* chars = uniformName.c_str();
-  GLint u_Name = glGetUniformLocation(pipeline, chars);
+  GLint u_Name = glGetUniformLocation(*pipeline, chars);
   if (u_Name < 0){
     std::cout << "Could not find " << uniformName << ", maybe a mispelling?\n";
     exit(EXIT_FAILURE);
@@ -209,31 +304,77 @@ GLint checkedUniformLocation(GLuint pipeline, std::string uniformName) {
 }
 
 // a convenient method for transferring lighting info to the shader
-void setPointLightUniform(GLuint pipeline, PointLight light, int index) {
+void Scene::setPointLightUniform(PointLight light, int index) {
   std::string location = "u_pointLights[" + std::to_string(index) + "].";
 
-  GLint u_lightColor = checkedUniformLocation(pipeline, location + "lightColor");
+  GLint u_lightColor = checkedUniformLocation(location + "lightColor");
   glUniform3fv(u_lightColor, 1, &light.lightColor[0]);
 
-  GLint u_lightPos = checkedUniformLocation(pipeline, location + "lightPos");
+  GLint u_lightPos = checkedUniformLocation(location + "lightPos");
   glUniform3fv(u_lightPos, 1, &light.lightPos[0]);
 
-  GLint u_ambientIntensity = checkedUniformLocation(pipeline, location + "ambientIntensity");
+  GLint u_ambientIntensity = checkedUniformLocation(location + "ambientIntensity");
   glUniform1f(u_ambientIntensity, light.ambientIntensity);
 
-  GLint u_specularStrength = checkedUniformLocation(pipeline, location + "specularStrength");
+  GLint u_specularStrength = checkedUniformLocation(location + "specularStrength");
   glUniform1f(u_specularStrength, light.specularStrength);
 }
 
 void Scene::uploadUniforms() {
   int count = 0;
   for (auto light : lights) {
-    setPointLightUniform(*pipeline, *light.second, count);
+    setPointLightUniform(*light.second, count);
     count += 1;
   }
 }
 
-void predraw() {
+void Scene::predraw() {
+  glEnable(GL_DEPTH_TEST);                    // NOTE: Need to enable DEPTH Test
+  glEnable(GL_CULL_FACE);
+
+  // Set the polygon fill mode
+  glPolygonMode(GL_FRONT, GL_FILL);
+
+  // Initialize clear color
+  // This is the background of the screen.
+  glViewport(0, 0, width, height);
+  glClearColor( 0.1f, 4.f, 7.f, 1.f );
+
+  //Clear color buffer and Depth Buffer
+  glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+  // Use our shader
+	glUseProgram(*pipeline);
+
+  // Model transformation by translating our object into world space
+  glm::mat4 model = glm::translate(glm::mat4(1.0f),glm::vec3(0.0f,0.0f,0.0f)); 
+
+  // Retrieve our location of our Model Matrix
+  GLint u_ModelMatrixLocation = checkedUniformLocation("u_ModelMatrix");
+  glUniformMatrix4fv(u_ModelMatrixLocation,1,GL_FALSE,&model[0][0]);
+
+  // Update the View Matrix
+  GLint u_ViewMatrixLocation = checkedUniformLocation("u_ViewMatrix");
+  glm::mat4 viewMatrix = camera.GetViewMatrix();
+  glUniformMatrix4fv(u_ViewMatrixLocation,1,GL_FALSE,&viewMatrix[0][0]);
+
+  // Projection matrix (in perspective) 
+  glm::mat4 perspective = glm::perspective(
+    glm::radians(45.0f), (float) width / height, 0.1f, 20.0f);
+
+  // Retrieve our location of our perspective matrix uniform 
+  GLint u_ProjectionLocation = checkedUniformLocation("u_Projection");
+  glUniformMatrix4fv(u_ProjectionLocation,1,GL_FALSE,&perspective[0][0]);
+
+  GLint u_viewPosition = checkedUniformLocation("u_viewPosition");
+  glm::vec3 cameraPosition = glm::vec3(camera.getPosition());
+  glUniform3fv(u_viewPosition, 1, &cameraPosition[0]);
+
+  GLint u_DiffuseTexture = checkedUniformLocation("u_DiffuseTexture");
+  glUniform1i(u_DiffuseTexture, 0);
+}
+
+void setupVAO() {
   // position
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (void*)0);
@@ -245,15 +386,17 @@ void predraw() {
   glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*9));
 }
 
-void postdraw() {
+void closeVAO() {
   glDisableVertexAttribArray(0);
   glDisableVertexAttribArray(1);
   glDisableVertexAttribArray(2);
 }
 
 void Scene::draw(){
+  predraw();
   // Enable our attributes
 	glBindVertexArray(vao);
+  uploadUniforms();
   //Render data
   for (auto entry : meshes) {
     Mesh* mesh = entry.second;
@@ -265,9 +408,9 @@ void Scene::draw(){
 
     glBindBuffer(GL_ARRAY_BUFFER, mesh->getVBO());
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->getElementBuffer());
-    predraw();
+    setupVAO();
     glDrawElements(GL_TRIANGLES, mesh->getElementBufferSize(), GL_UNSIGNED_INT, (void*)(0 * sizeof(GLuint)));
-    postdraw();
+    closeVAO();
   }
 	glBindVertexArray(0);
 

@@ -41,142 +41,6 @@ GLuint gGraphicsPipelineShaderProgram	= 0;
 // Camera
 Camera gCamera;
 
-// ^^^^^^^^^^^^^^^^^^^^^^^^ Globals ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-// vvvvvvvvvvvvvvvvvvv Error Handling Routines vvvvvvvvvvvvvvv
-static void GLClearAllErrors(){
-  while (glGetError() != GL_NO_ERROR) {}
-}
-
-// Returns true if we have an error
-static bool GLCheckErrorStatus(const char* function, int line){
-  if (GLenum error = glGetError()) {
-    std::cout << "OpenGL Error:" << error << "\tLine: " << line << "\tfunction: " << function << std::endl;
-    return true;
-  }
-  return false;
-}
-
-#define GLCheck(x) GLClearAllErrors(); x; GLCheckErrorStatus(#x,__LINE__);
-// ^^^^^^^^^^^^^^^^^^^ Error Handling Routines ^^^^^^^^^^^^^^^
-
-/**
-* LoadShaderAsString takes a filepath as an argument and will read line by line a file and return a string that is meant to be compiled at runtime for a vertex, fragment, geometry, tesselation, or compute shader.
-* e.g.
-*       LoadShaderAsString("./shaders/filepath");
-*
-* @param filename Path to the shader file
-* @return Entire file stored as a single string 
-*/
-std::string LoadShaderAsString(const std::string& filename){
-  // Resulting shader program loaded as a single string
-  std::string result = "";
-
-  std::string line = "";
-  std::ifstream myFile(filename.c_str());
-
-  if (myFile.is_open()) {
-    while (std::getline(myFile, line)) {
-      result += line + '\n';
-    }
-    myFile.close();
-  }
-
-  return result;
-}
-
-/**
-* CompileShader will compile any valid vertex, fragment, geometry, tesselation, or compute shader.
-* e.g.
-*	    Compile a vertex shader: 	CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
-*       Compile a fragment shader: 	CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-*
-* @param type We use the 'type' field to determine which shader we are going to compile.
-* @param source : The shader source code.
-* @return id of the shaderObject
-*/
-GLuint CompileShader(GLuint type, const std::string& source){
-	// Compile our shaders
-	GLuint shaderObject;
-
-	// Based on the type passed in, we create a shader object specifically for that
-	// type.
-	if (type == GL_VERTEX_SHADER){
-		shaderObject = glCreateShader(GL_VERTEX_SHADER);
-	} else if (type == GL_FRAGMENT_SHADER){
-		shaderObject = glCreateShader(GL_FRAGMENT_SHADER);
-	}
-
-	const char* src = source.c_str();
-	// The source of our shader
-	glShaderSource(shaderObject, 1, &src, nullptr);
-	// Now compile our shader
-	glCompileShader(shaderObject);
-
-	// Retrieve the result of our compilation
-	int result;
-	// Our goal with glGetShaderiv is to retrieve the compilation status
-	glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &result);
-
-	if(result == GL_FALSE){
-		int length;
-		glGetShaderiv(shaderObject, GL_INFO_LOG_LENGTH, &length);
-		char* errorMessages = new char[length]; // Could also use alloca here.
-		glGetShaderInfoLog(shaderObject, length, &length, errorMessages);
-
-		if (type == GL_VERTEX_SHADER){
-			std::cout << "ERROR: GL_VERTEX_SHADER compilation failed!\n" << errorMessages << "\n";
-		} else if (type == GL_FRAGMENT_SHADER){
-			std::cout << "ERROR: GL_FRAGMENT_SHADER compilation failed!\n" << errorMessages << "\n";
-		}
-		// Reclaim our memory
-		delete[] errorMessages;
-
-		// Delete our broken shader
-		glDeleteShader(shaderObject);
-
-		return 0;
-	}
-
-  return shaderObject;
-}
-
-/**
-* Creates a graphics program object (i.e. graphics pipeline) with a Vertex Shader and a Fragment Shader
-*
-* @param vertexShaderSource Vertex source code as a string
-* @param fragmentShaderSource Fragment shader source code as a string
-* @return id of the program Object
-*/
-GLuint CreateShaderProgram(const std::string& vertexShaderSource, const std::string& fragmentShaderSource){
-  // Create a new program object
-  GLuint programObject = glCreateProgram();
-
-  // Compile our shaders
-  GLuint myVertexShader   = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
-  GLuint myFragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-
-  // Link our two shader programs together.
-	// Consider this the equivalent of taking two .cpp files, and linking them into
-	// one executable file.
-  glAttachShader(programObject,myVertexShader);
-  glAttachShader(programObject,myFragmentShader);
-  glLinkProgram(programObject);
-
-  // Validate our program
-  glValidateProgram(programObject);
-
-  // Once our final program Object has been created, we can
-	// detach and then delete our individual shaders.
-  glDetachShader(programObject,myVertexShader);
-  glDetachShader(programObject,myFragmentShader);
-	// Delete the individual shaders once we are done
-  glDeleteShader(myVertexShader);
-  glDeleteShader(myFragmentShader);
-
-  return programObject;
-}
-
 /**
 * Create the graphics pipeline
 *
@@ -188,7 +52,6 @@ void CreateGraphicsPipeline(){
 
 	gGraphicsPipelineShaderProgram = CreateShaderProgram(vertexShaderSource,fragmentShaderSource);
 }
-
 
 /**
 * Initialization of the graphics application. Typically this will involve setting up a window
@@ -238,91 +101,12 @@ void InitializeProgram(){
 	}
 }
 
-// get the uniform location and run generic checks
-GLint checkedUniformLocation(std::string uniformName) {
-  const GLchar* chars = uniformName.c_str();
-  GLint u_Name = glGetUniformLocation(gGraphicsPipelineShaderProgram, chars);
-  if (u_Name < 0){
-    std::cout << "Could not find " << uniformName << ", maybe a mispelling?\n";
-    exit(EXIT_FAILURE);
-  }
-  return u_Name;
-}
-
-/**
-* PreDraw
-* Typically we will use this for setting some sort of 'state'
-* Note: some of the calls may take place at different stages (post-processing) of the
-* 		 pipeline.
-* @return void
-*/
-void PreDraw(Scene* scene){
-	// Disable depth test and face culling.
-  glEnable(GL_DEPTH_TEST);                    // NOTE: Need to enable DEPTH Test
-  glEnable(GL_CULL_FACE);
-
-  // Set the polygon fill mode
-  glPolygonMode(GL_FRONT, GL_FILL);
-
-  // Initialize clear color
-  // This is the background of the screen.
-  glViewport(0, 0, gScreenWidth, gScreenHeight);
-  glClearColor( 0.1f, 4.f, 7.f, 1.f );
-
-  //Clear color buffer and Depth Buffer
-  glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
-  // Use our shader
-	glUseProgram(gGraphicsPipelineShaderProgram);
-
-  // Model transformation by translating our object into world space
-  glm::mat4 model = glm::translate(glm::mat4(1.0f),glm::vec3(0.0f,0.0f,0.0f)); 
-
-  // Retrieve our location of our Model Matrix
-  GLint u_ModelMatrixLocation = checkedUniformLocation("u_ModelMatrix");
-  glUniformMatrix4fv(u_ModelMatrixLocation,1,GL_FALSE,&model[0][0]);
-
-  // Update the View Matrix
-  GLint u_ViewMatrixLocation = checkedUniformLocation("u_ViewMatrix");
-  glm::mat4 viewMatrix = gCamera.GetViewMatrix();
-  glUniformMatrix4fv(u_ViewMatrixLocation,1,GL_FALSE,&viewMatrix[0][0]);
-
-  // Projection matrix (in perspective) 
-  glm::mat4 perspective = glm::perspective(
-    glm::radians(45.0f), (float) gScreenWidth / gScreenHeight, 0.1f, 20.0f);
-
-  // Retrieve our location of our perspective matrix uniform 
-  GLint u_ProjectionLocation = checkedUniformLocation("u_Projection");
-  glUniformMatrix4fv(u_ProjectionLocation,1,GL_FALSE,&perspective[0][0]);
-
-  GLint u_viewPosition = checkedUniformLocation("u_viewPosition");
-  glm::vec3 cameraPosition = glm::vec3(gCamera.getPosition());
-  glUniform3fv(u_viewPosition, 1, &cameraPosition[0]);
-
-  scene->uploadUniforms();
-
-  GLint u_DiffuseTexture = checkedUniformLocation("u_DiffuseTexture");
-  glUniform1i(u_DiffuseTexture, 0);
-}
-
-/**
-* Draw
-* The render function gets called once per loop.
-* Typically this includes 'glDraw' related calls, and the relevant setup of buffers
-* for those calls.
-*
-* @return void
-*/
-void Draw(Scene* scene){
-  scene->draw();
-}
-
 /**
 * Function called in the Main application loop to handle user input
 *
 * @return void
 */
-void Input(Scene* scene, std::vector<OBJModel> models, EntityGod &entityGod){
+void Input(EntityGod &entityGod){
     // Two static variables to hold the mouse position
     static int mouseX=gScreenWidth/2;
     static int mouseY=gScreenHeight/2; 
@@ -376,33 +160,13 @@ void Input(Scene* scene, std::vector<OBJModel> models, EntityGod &entityGod){
   }
 }
 
-class ProgramSession {
-  public:
-  std::vector<OBJModel> models;
-  unsigned int tickCount = 0;
-  GravitySimulation *gravitySimulation;
-  Scene *scene;
-  ProgramSession(std::vector<OBJModel> &objModels, GravitySimulation* simulation, Scene* s) {
-    models = objModels;
-    gravitySimulation = simulation;
-    scene = s;
-  }
-
-  void tick() {
-    tickCount += 1;
-    if (tickCount < 1000 || tickCount % 5 != 0) {
-      return;
-    }
-  }
-};
-
 /**
 * Main Application Loop
 * This is an infinite loop in our graphics application
 *
 * @return void
 */
-void MainLoop(ProgramSession* state, EntityGod &entityGod){
+void MainLoop(EntityGod &entityGod, Scene &scene){
     // Little trick to map mouse to center of screen always. Useful for handling 'mouselook'
     // This works because we effectively 're-center' our mouse at the start of every frame prior to detecting any mouse motion.
     SDL_WarpMouseInWindow(gGraphicsApplicationWindow,gScreenWidth/2,gScreenHeight/2);
@@ -412,18 +176,16 @@ void MainLoop(ProgramSession* state, EntityGod &entityGod){
 	while(!gQuit){
     tick += 1;
 		// Handle Input
-		Input(state->scene, state->models, entityGod);
+		Input(entityGod);
 		// Setup anything (i.e. OpenGL State) that needs to take place before draw calls
-    state->tick();
     glm::vec3 pos = entityGod.getEntity("player").getPosition() * BLOCK_SCALE;
     gCamera.SetCameraEyePosition(pos.x, pos.y, pos.z);
 
     if (tick % 40 == 0) {
       entityGod.update();
     }
-		PreDraw(state->scene);
 		// Draw Calls in OpenGL
-		Draw(state->scene);
+		scene.draw();
 		//Update screen of our specified window
 		SDL_GL_SwapWindow(gGraphicsApplicationWindow);
 	}
@@ -461,8 +223,7 @@ int main(int argc, char* args[]) {
 
   std::vector<OBJModel> models;
   GravitySimulation simulation(0.0000001);
-  Scene scene(&gGraphicsPipelineShaderProgram);
-  ProgramSession state(models, &simulation, &scene);
+  Scene scene(&gGraphicsPipelineShaderProgram, gScreenWidth, gScreenHeight, gCamera);
   World world;
   RenderGod renderer(world, scene);
   TerrainGod generator(world);
@@ -478,7 +239,7 @@ int main(int argc, char* args[]) {
   renderer.setRadius(5);
   renderer.update();
 	// 4. Call the main application loop
-	MainLoop(&state, entityManager);
+	MainLoop(entityManager, scene);
 
 	// 5. Call the cleanup function when our program terminates
 	CleanUp();
