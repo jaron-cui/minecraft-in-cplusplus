@@ -550,7 +550,7 @@ Chunk ChunkGenerator::generateChunk() {
     for (int y = 0; y < CHUNK_SIZE; y += 1) {
       for (int x = 0; x < CHUNK_SIZE; x += 1) {
         float noiseValue = sampleCompoundNoise(glm::ivec3(x, y, z));
-        float airThreshold = 0.4 - glm::smoothstep(-15.0f, -0.5f, float(y) + chunkCoordinate.y * CHUNK_SIZE) * 0.8;
+        float airThreshold = 0.2 - glm::smoothstep(-15.0f, -0.5f, float(y) + chunkCoordinate.y * CHUNK_SIZE) * 0.6;
         uint8_t blockType;
         if (noiseValue > airThreshold) {
           // std::cout << "  ";

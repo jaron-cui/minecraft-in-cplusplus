@@ -388,10 +388,10 @@ void setupVAO() {
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (void*)0);
   // Normal information (nx,ny,nz)
   glEnableVertexAttribArray(1);
-  glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*6));
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*3));
   // texture coordinate
   glEnableVertexAttribArray(2);
-  glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*9));
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(VBOVertex), (GLvoid*)(sizeof(GL_FLOAT)*6));
 }
 
 void closeVAO() {

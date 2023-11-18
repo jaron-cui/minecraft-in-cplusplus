@@ -14,6 +14,7 @@
 #include <string>
 #include <fstream>
 #include <unordered_map>
+#include <chrono>
 
 // Our libraries
 #include "Camera.hpp"
@@ -33,6 +34,9 @@ SDL_GLContext gOpenGLContext = nullptr;
 bool gQuit = false; // If this is quit = 'true' then the program terminates.
 // Camera
 Camera gCamera;
+
+const int FRAMERATE = 120;
+const int FRAMETIME_MS = std::floor(1000.0 / FRAMERATE);
 
 /**
 * Initialization of the graphics application. Typically this will involve setting up a window
@@ -88,9 +92,9 @@ void InitializeProgram(){
 * @return void
 */
 void Input(EntityGod &entityGod){
-    // Two static variables to hold the mouse position
-    static int mouseX=gScreenWidth/2;
-    static int mouseY=gScreenHeight/2; 
+  // Two static variables to hold the mouse position
+  static int mouseX=gScreenWidth/2;
+  static int mouseY=gScreenHeight/2; 
 
 	// Event handler that handles various events in SDL
 	// that are related to input and output
@@ -123,17 +127,16 @@ void Input(EntityGod &entityGod){
   float acceleration = 0.008;
   glm::vec3 forwardStepDirection = glm::normalize(gCamera.getDirection() * glm::vec3(1, 0, 1));
   glm::vec3 cumulativeDirection = glm::vec3(0, 0, 0);
-  if (state[SDL_SCANCODE_W]) {
-    cumulativeDirection += forwardStepDirection;
-  }
-  if (state[SDL_SCANCODE_S]) {
-    cumulativeDirection -= forwardStepDirection;
-  }
-  if (state[SDL_SCANCODE_A]) {
-    cumulativeDirection += glm::vec3(forwardStepDirection.z, 0, -forwardStepDirection.x);
-  }
-  if (state[SDL_SCANCODE_D]) {
-    cumulativeDirection += glm::vec3(-forwardStepDirection.z, 0, forwardStepDirection.x);
+  struct WalkKeyBind { SDL_Scancode key; glm::vec3 step; };
+  WalkKeyBind walkBinds[4] = {
+    {SDL_SCANCODE_W, forwardStepDirection}, {SDL_SCANCODE_S, -forwardStepDirection},
+    {SDL_SCANCODE_A, glm::vec3(forwardStepDirection.z, 0, -forwardStepDirection.x)},
+    {SDL_SCANCODE_D, glm::vec3(-forwardStepDirection.z, 0, forwardStepDirection.x)}
+    };
+  for (WalkKeyBind walkBind : walkBinds) {
+    if (state[walkBind.key]) {
+      cumulativeDirection += walkBind.step;
+    }
   }
   entityGod.getEntity("player").step(glm::normalize(cumulativeDirection) * acceleration);
   if (state[SDL_SCANCODE_SPACE]) {
@@ -156,19 +159,23 @@ void MainLoop(EntityGod &entityGod, Scene &scene){
 	// While application is running
 	while(!gQuit){
     tick += 1;
+    const auto frameEnd = std::chrono::steady_clock::now() + std::chrono::milliseconds(FRAMETIME_MS);
 		// Handle Input
 		Input(entityGod);
 		// Setup anything (i.e. OpenGL State) that needs to take place before draw calls
-    glm::vec3 pos = entityGod.getEntity("player").getPosition() * BLOCK_SCALE;
+    Entity &player = entityGod.getEntity("player");
+    glm::vec3 cameraOffset = glm::vec3(POSY) * player.getHitbox().dimensions.y * 0.35333f;
+    glm::vec3 pos = (player.getPosition() + cameraOffset) * BLOCK_SCALE;
     gCamera.SetCameraEyePosition(pos.x, pos.y, pos.z);
 
-    if (tick % 40 == 0) {
+    if (tick % 1 == 0) {
       entityGod.update();
     }
 		// Draw Calls in OpenGL
 		scene.draw();
 		//Update screen of our specified window
 		SDL_GL_SwapWindow(gGraphicsApplicationWindow);
+    std::this_thread::sleep_until(frameEnd);
 	}
 }
 
