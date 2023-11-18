@@ -28,16 +28,19 @@ void Camera::MouseLook(int mouseX, int mouseY){
     float pitchChangeMin = -89 - pitchDegrees;
     pitchDegrees += std::max(pitchChangeMin, std::min(pitchChangeMax, dy * PAN_FACTOR));
 
-    // Rotate about the upVector
+    recalculateDirection();
+
+
+    // Update our old position after we have made changes 
+    m_oldMousePosition = newMousePosition;
+}
+
+void Camera::recalculateDirection() {
     glm::mat4 rotation(1);
     glm::vec3 sideVector = glm::vec3(sin(glm::radians(yawDegrees)), 0, cos(glm::radians(yawDegrees)));
     glm::mat4 pitchRotation = glm::rotate(rotation, glm::radians(pitchDegrees), -sideVector);
     glm::mat4 yawRotation = glm::rotate(rotation, glm::radians(yawDegrees), glm::vec3(0, 1, 0));
     m_viewDirection = glm::vec3(pitchRotation * yawRotation * glm::vec4(1.0, 0.0, 0.0, 1.0));
-
-
-    // Update our old position after we have made changes 
-    m_oldMousePosition = newMousePosition;
 }
 
 void Camera::MoveForward(float speed){
@@ -88,13 +91,11 @@ Camera::Camera(){
     std::cout << "Camera.cpp: (Constructor) Created a Camera!\n";
 	// Position us at the origin.
     m_eyePosition = glm::vec3(0.0f,0.0f, -4.0f);
-	// Looking down along the y-axis initially.
-	// Remember, this is negative because we are looking 'into' the scene.
-    m_viewDirection = glm::vec3(0.0f, 0.0f, 1.0f);
 	// For now--our upVector always points up along the z-axis
     m_upVector = glm::vec3(0.0f, 1.0f, 0.0f);
     pitchDegrees = 0;
     yawDegrees = 0;
+    recalculateDirection();
 }
 
 glm::mat4 Camera::GetViewMatrix() const{

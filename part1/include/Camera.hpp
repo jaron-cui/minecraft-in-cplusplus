@@ -30,6 +30,7 @@ public:
     void MoveDown(float speed);
     // Set the position for the camera
     void SetCameraEyePosition(float x, float y, float z);
+    void recalculateDirection();
     // Returns the Camera Position where the eye is 
     glm::vec3 getPosition();
 	  // Returns the 'view' direction
