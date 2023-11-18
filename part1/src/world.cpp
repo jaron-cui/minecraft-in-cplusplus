@@ -586,7 +586,7 @@ void TerrainGod::generateSpawn() {
       chunk.blocks[z][y][x] = STONE;
     }
   }
-  int rad = 1;
+  int rad = 5;
   int seed = time(NULL);
   for (int z = -rad; z <= rad; z += 1) {
     for (int x = -rad; x <= rad; x += 1) {
@@ -696,6 +696,13 @@ RenderGod::RenderGod(World &world, Scene &openGLScene): God(world), scene(openGL
 void RenderGod::update() {
   int chunkCount = 0;
   glm::ivec3 originChunk = World::blockToChunkCoordinate(origin);
+  for (glm::ivec3 chunkCoordinate : realm) {
+    if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(originChunk)) <= radius) {
+      continue;
+    }
+    scene.deleteMesh(Chunk::id(chunkCoordinate));
+    realm.erase(chunkCoordinate);
+  }
   for (int z = originChunk.z - radius; z < originChunk.z + radius; z += 1) {
     for (int y = originChunk.y - radius; y < originChunk.y + radius; y += 1) {
       for (int x = originChunk.x - radius; x < originChunk.x + radius; x += 1) {
@@ -717,11 +724,14 @@ void RenderGod::update() {
           continue;
         }
         chunkCount += 1;
+
           // std::cout << "rendering chunk!------------" << std::endl;
         OBJModel model = scaleOBJ(offsetOBJ(world.getChunk(chunkCoordinate).calculateChunkOBJ(), glm::vec3(chunkCoordinate * CHUNK_SIZE)), BLOCK_SCALE);
         model.mtl = {"media/textures.ppm"};
         model.vertexNormals.push_back({0, 0, 0});
+        
         scene.createMesh(Chunk::id(chunkCoordinate), model);
+        realm.insert(chunkCoordinate);
       }
     }
   }

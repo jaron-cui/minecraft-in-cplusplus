@@ -274,7 +274,7 @@ void Scene::deleteMesh(std::string name) {
     return;
   }
   meshes[name]->clearBuffers();
-  delete &meshes[name];
+  delete meshes[name];
   meshes.erase(name);
 }
 

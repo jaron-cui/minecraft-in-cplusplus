@@ -165,6 +165,10 @@ void MainLoop(Game &game){
     SDL_WarpMouseInWindow(gGraphicsApplicationWindow,gScreenWidth/2,gScreenHeight/2);
     SDL_SetRelativeMouseMode(SDL_TRUE);
   int tick = 0;
+  // process physics once per tick
+  int physicsTick = 1;
+  // update rendering once per second
+  int renderTick = FRAMERATE;
 	// While application is running
 	while(!gQuit){
     tick += 1;
@@ -177,8 +181,12 @@ void MainLoop(Game &game){
     glm::vec3 pos = (player.getPosition() + cameraOffset) * BLOCK_SCALE;
     gCamera.SetCameraEyePosition(pos.x, pos.y, pos.z);
 
-    if (tick % 1 == 0) {
+    if (tick % physicsTick == 0) {
       game.entityGod.update();
+    }
+    if (tick % renderTick == 0) {
+      game.renderGod.setOrigin(player.getPosition());
+      game.renderGod.update();
     }
 		// Draw Calls in OpenGL
 		game.scene.draw();
@@ -228,7 +236,7 @@ int main(int argc, char* args[]) {
 	CreateGraphicsPipeline();
 
   renderer.setOrigin({0, 0, 0});
-  renderer.setRadius(5);
+  renderer.setRadius(2);
   renderer.update();
 	// 4. Call the main application loop
 	MainLoop(game);
