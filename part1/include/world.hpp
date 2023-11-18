@@ -1,5 +1,6 @@
 #ifndef WORLD_H
 #define WORLD_H
+#include <cstdlib> 
 #include "scene.hpp"
 
 /**
@@ -155,6 +156,42 @@ class TerrainGod: public God {
   public:
     TerrainGod(World &world);
     void generateSpawn();
+};
+
+
+struct PerlinNoiseSubgrid {
+  // multiply positions within this grid to bring to true scale
+  float scale;
+  // indicates the grid intersections between which a box volume
+  // represents the subgrid, inclusive
+  glm::ivec3 corner1;
+  glm::ivec3 corner2;
+  // the vectors in the grid
+  glm::vec3* grid;
+};
+
+class ChunkGenerator {
+  private:
+    glm::ivec3 chunkCorner;
+    int seed;
+    std::vector<PerlinNoiseSubgrid> perlinNoiseGrids;
+  public:
+    ChunkGenerator(glm::ivec3 chunkCoordinate, int initialSeed, std::vector<float> scales);
+    ~ChunkGenerator();
+
+    float calculateNoiseValue(glm::ivec3 blockCoordinate);
+
+    float interpolate(float x, float y, float weight) const;
+
+    float samplePerlinNoise(PerlinNoiseSubgrid &grid, glm::ivec3 blockCoordinate) const;
+
+    Chunk generateChunk();
+
+    void generateVectorGrid(float scale);
+
+    glm::vec3 nextRandomVector();
+    
+    glm::vec3 blockToGridScale(glm::ivec3 blockCoordinate, float scale) const;
 };
 
 class RenderGod: public God {

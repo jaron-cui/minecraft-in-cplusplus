@@ -55,7 +55,7 @@ vec3 calculateSpecular(PointLight light) {
 void main()
 {
   vec3 diffuseColor = texture(u_DiffuseTexture, v_TextureCoordinate).rgb;
-  diffuseColor = (diffuseColor * .5) + .5;
+  diffuseColor = (diffuseColor * .5);
   vec3 ambient = vec3(0.0f, 0.0f, 0.0f);
   vec3 diffuse = vec3(0.0f, 0.0f, 0.0f);
   vec3 specular = vec3(0.0f, 0.0f, 0.0f);
@@ -64,7 +64,7 @@ void main()
     ambient += calculateAmbient(light);
     diffuse += calculateDiffuse(light);
     specular += calculateSpecular(light);
-    ambient += vec3(1, 1, 1) * (int(distance(light.lightPos, v_position)) % 20) / 20.0;
+    ambient += vec3(0.5, 0.5, 0.5) * (int(distance(light.lightPos, v_position)) % 20) / 20.0;
   }
   
   vec3 total = ambient + diffuse + specular;

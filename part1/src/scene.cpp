@@ -142,13 +142,13 @@ bool Scene::createMesh(std::string name, OBJModel obj) {
   if (meshes.find(name) != meshes.end()) {
     return false;
   }
-  std::cout << "creating mesh" << std::endl;
+  // std::cout << "creating mesh" << std::endl;
   Mesh* mesh = new Mesh(*vao, obj);
-  std::cout << "storing mesh" << std::endl;
+  // std::cout << "storing mesh" << std::endl;
   meshes[name] = mesh;
   tryLoadingTexture(obj.mtl.mapKD, textures);
   
-  std::cout << "done storing mesh" << std::endl;
+  // std::cout << "done storing mesh" << std::endl;
   return true;
 }
 
