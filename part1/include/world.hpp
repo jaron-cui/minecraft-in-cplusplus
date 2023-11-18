@@ -158,40 +158,42 @@ class TerrainGod: public God {
     void generateSpawn();
 };
 
+class ChunkPerlinNoiseCache {
+  private:
+    int seed;
+    float scale;
+    int dimensions;
+    
+    glm::ivec3 chunkCoordinate;
+    glm::ivec3 corner1;
+    glm::ivec3 corner2;
+    glm::vec3* grid;
 
-struct PerlinNoiseSubgrid {
-  // multiply positions within this grid to bring to true scale
-  float scale;
-  // indicates the grid intersections between which a box volume
-  // represents the subgrid, inclusive
-  glm::ivec3 corner1;
-  glm::ivec3 corner2;
-  // the vectors in the grid
-  glm::vec3* grid;
+    void generateVectors();
+    glm::vec3 blockToGridScale(glm::ivec3 blockCoordinate) const;
+    glm::vec3 pseudoRandomVector(glm::ivec3 vectorGridCoordinate) const;
+    float interpolate(float x, float y, float weight) const;
+  public:
+    ChunkPerlinNoiseCache(float noiseScale, int worldSeed, glm::ivec3 chunkCoordinates);
+    ~ChunkPerlinNoiseCache();
+    float sample(glm::ivec3 localCoordinate);
+};
+
+struct NoiseProfile {
+  float magnitude;
+  ChunkPerlinNoiseCache &sampler;
 };
 
 class ChunkGenerator {
   private:
-    glm::ivec3 chunkCorner;
+    glm::ivec3 chunkCoordinate;
     int seed;
-    std::vector<PerlinNoiseSubgrid> perlinNoiseGrids;
+    std::vector<NoiseProfile*> noises;
+    float sampleCompoundNoise(glm::ivec3 localCoordinate);
   public:
-    ChunkGenerator(glm::ivec3 chunkCoordinate, int initialSeed, std::vector<float> scales);
-    ~ChunkGenerator();
-
-    float calculateNoiseValue(glm::ivec3 blockCoordinate);
-
-    float interpolate(float x, float y, float weight) const;
-
-    float samplePerlinNoise(PerlinNoiseSubgrid &grid, glm::ivec3 blockCoordinate) const;
+    ChunkGenerator(glm::ivec3 chunkCoordinate, int worldSeed, std::vector<NoiseProfile*> noiseProfiles);
 
     Chunk generateChunk();
-
-    void generateVectorGrid(float scale);
-
-    glm::vec3 pseudoRandomVector(int seed, float scale, glm::ivec3 vectorGridCoordinate);
-    
-    glm::vec3 blockToGridScale(glm::ivec3 blockCoordinate, float scale) const;
 };
 
 class RenderGod: public God {
