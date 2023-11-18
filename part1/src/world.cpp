@@ -469,7 +469,7 @@ float ChunkGenerator::samplePerlinNoise(PerlinNoiseSubgrid &grid, glm::ivec3 blo
       for (int x = loCellCorner.x; x <= hiCellCorner.x; x += 1) {
         glm::ivec3 cellCorner = glm::ivec3(x, y, z);
         //distanceToCorners.push_back(glm::distance(cellCorner, gridCoordinate));
-        int vectorIndex = (d.y + 1) * z + (d.x + 1) * y + x;
+        int vectorIndex = (d.x + 1) *((d.y + 1) * z + y) + x;
         // std::cout << "vector " << (d.x + 1) *((d.y + 1) * z + y) + x << ": " << grid.grid[vectorIndex].x << " " << grid.grid[vectorIndex].y << " " << grid.grid[vectorIndex].z << std::endl;
         dotProducts.push_back(glm::dot(grid.grid[vectorIndex], gridCoordinate - glm::vec3(cellCorner)));
       }
@@ -514,18 +514,14 @@ void ChunkGenerator::generateVectorGrid(float scale) {
   glm::ivec3 endingVector = glm::ivec3(glm::ceil(blockToGridScale(blockCorner2, scale)));
   glm::ivec3 d = endingVector - startingVector;
   // std::cout << "Start and end: " << startingVector.x << " " << endingVector.x << std::endl;
-
-  // reset srand
-  srand(seed);
-  // "randomize" seed again
-  seed = ((seed * seed * 1029121) % 31 + 9876) * 2336779;
-  // do I need to call "new" here?
+  
   glm::vec3 *grid = new glm::vec3[(d.z + 1) * (d.y + 1) * (d.x + 1)];
   for (int z = 0; z <= d.z; z += 1) {
     for (int y = 0; y <= d.y; y += 1) {
       for (int x = 0; x <= d.x; x += 1) {
+        glm::ivec3 vectorGridCoordinate = startingVector + glm::ivec3(x, y, z);
         // std::cout << "populated: " << (d.x + 1) *((d.y + 1) * z + y) + x << std::endl;
-        grid[(d.x + 1) *((d.y + 1) * z + y) + x] = nextRandomVector();
+        grid[(d.x + 1) *((d.y + 1) * z + y) + x] = pseudoRandomVector(seed, scale, vectorGridCoordinate);
       }
     }
   }
@@ -533,7 +529,13 @@ void ChunkGenerator::generateVectorGrid(float scale) {
 }
 
 // TODO: this should depend on the vector location
-glm::vec3 ChunkGenerator::nextRandomVector() {
+glm::vec3 ChunkGenerator::pseudoRandomVector(int seed, float scale, glm::ivec3 vectorGridCoordinate) {
+  // reset srand
+  srand(seed);
+  int vectorID = vectorGridCoordinate.x * rand() + vectorGridCoordinate.y * rand() + vectorGridCoordinate.z * rand();
+  int scaleID = scale * rand() * rand();
+  // generate a unique set of random values for a given vector of a given scale and world seed
+  srand(vectorID * scaleID);
   return glm::normalize(glm::vec3((double) rand() / RAND_MAX, (double) rand() / RAND_MAX, (double) rand() / RAND_MAX) - 0.5f);
 }
 
@@ -550,13 +552,14 @@ void TerrainGod::generateSpawn() {
       chunk.blocks[z][y][x] = STONE;
     }
   }
-  int rad = 4;
+  int rad = 3;
   for (int z = -rad; z <= rad; z += 1) {
     for (int x = -rad; x <= rad; x += 1) {
-      world.setChunk({x, -1, z}, chunk);
+      glm::ivec3 chunkCoordinate = {x, -1, z};
+      world.setChunk(chunkCoordinate, ChunkGenerator(chunkCoordinate, time(NULL), {10}).generateChunk());
     }
   }
-  world.setChunk({1, -1, 1}, ChunkGenerator({2, -1, -1}, 0, {10}).generateChunk());
+  world.setChunk({0, -1, 0}, chunk);
 }
 
 /*

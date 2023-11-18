@@ -189,7 +189,7 @@ class ChunkGenerator {
 
     void generateVectorGrid(float scale);
 
-    glm::vec3 nextRandomVector();
+    glm::vec3 pseudoRandomVector(int seed, float scale, glm::ivec3 vectorGridCoordinate);
     
     glm::vec3 blockToGridScale(glm::ivec3 blockCoordinate, float scale) const;
 };
