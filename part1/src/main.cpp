@@ -184,10 +184,12 @@ void MainLoop(Game &game){
   int tick = 0;
   // process physics once per tick
   int physicsTick = 1;
-  // update rendering once every 2 seconds
-  int renderTick = FRAMERATE * 2;
-  // update generation once every 5 seconds
-  int generationTick = FRAMERATE * 5;
+  // update rendering once every four seconds
+  int buildNewChunkMeshesTick = FRAMERATE / 4;
+  // upload a few meshes every now and then
+  int uploadCacheTick = FRAMERATE / 20;
+  // update generation once every 2 seconds
+  int generationTick = FRAMERATE * 2;
 	// While application is running
   std::thread renderThread;
   std::thread terrainGenerationThread;
@@ -206,14 +208,16 @@ void MainLoop(Game &game){
     if (tick % physicsTick == 0) {
       game.entityGod.update();
     }
-    if (tick % renderTick == 0) {
+    if (tick % uploadCacheTick == 0) {
+      game.renderGod.uploadCache(1);
+    }
+    if (tick % buildNewChunkMeshesTick == 0) {
       // wrap up rendering stuff
       if (renderThread.joinable()) {
         renderThread.join();
       }
       game.renderGod.setOrigin(player.getPosition());
       game.renderGod.cullFarChunks(2);
-      game.renderGod.uploadCache();
       // transfer rendered chunks to vbo
       renderThread = std::thread(&RenderGod::update, &game.renderGod);
     }

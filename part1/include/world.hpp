@@ -253,7 +253,7 @@ class RenderGod: public God {
     RenderGod(World &world, Scene &scene);
     // update the cache
     void update() override;
-    void uploadCache();
+    void uploadCache(int max);
     // allowance indicates how far chunks beyond the render radius
     // are allowed to stay before they get culled from memory
     void cullFarChunks(int allowance);

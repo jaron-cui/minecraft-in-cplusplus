@@ -798,11 +798,21 @@ OBJModel Chunk::calculateChunkOBJ() {
 
 RenderGod::RenderGod(World &world, Scene &openGLScene): God(world), scene(openGLScene) {}
 
-void RenderGod::uploadCache() {
+void RenderGod::uploadCache(int max) {
+  world.divineIntervention.lock();
+  std::vector<glm::ivec3> uploaded;
   for (auto it : cache) {
+    if (max == 0) {
+      break;
+    }
     scene.createMeshFromCache(Chunk::id(it.first), it.second);
+    uploaded.push_back(it.first);
+    max -= 1;
   }
-  cache.clear();
+  for (glm::ivec3 chunk : uploaded) {
+    cache.erase(chunk);
+  }
+  world.divineIntervention.unlock();
 }
 
 void RenderGod::cullFarChunks(int allowance) {
@@ -826,7 +836,7 @@ void RenderGod::update() {
         glm::ivec3 chunkCoordinate = {x, y, z};
           // std::cout << "chunk: " << chunkCoordinate.x << ", " << chunkCoordinate.y  << ", " << chunkCoordinate.z << std::endl;
         // we only care about chunks within a spherical bubble
-        if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(originChunk)) > radius) {
+        if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(origin) / float(CHUNK_SIZE)) > radius) {
           // std::cout << "out of chunk render sphere" << std::endl;
           continue;
         }
