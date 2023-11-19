@@ -111,9 +111,9 @@ float roundTieUp(float x) {
   return diff < 0.49999f ? base : base + 1;
 }
 
-float greatestIntegerLessThan(float x) {
-  int floor = std::floor(x);
-  return floor == x ? x - 1 : floor;
+float leastIntegerGreaterThan(float x) {
+  int floor = std::ceil(x);
+  return floor == x ? x + 1 : floor;
 }
 
 glm::vec3 map(float (*f)(float), glm::vec3 v) {
@@ -461,29 +461,32 @@ Entity& EntityGod::getEntity(std::string name) {
 ** ----- TERRAIN  ----------------
 */
 
-ChunkPerlinNoiseCache::ChunkPerlinNoiseCache(float noiseScale, int worldSeed, glm::ivec3 chunkCoordinates) {
+ChunkPerlinNoiseCache3D::ChunkPerlinNoiseCache3D(float noiseScale, int worldSeed, glm::ivec3 chunkCoordinates) {
   seed = worldSeed;
   scale = noiseScale;
   chunkCoordinate = chunkCoordinates;
   generateVectors();
 }
 
-ChunkPerlinNoiseCache::~ChunkPerlinNoiseCache() {
+ChunkPerlinNoiseCache3D::~ChunkPerlinNoiseCache3D() {
   delete [] grid;
 }
 
-glm::vec3 ChunkPerlinNoiseCache::blockToGridScale(glm::ivec3 blockCoordinate) const {
+glm::vec3 ChunkPerlinNoiseCache3D::blockToGridScale(glm::ivec3 blockCoordinate) const {
   return glm::vec3(blockCoordinate) / scale;
 }
 
-void ChunkPerlinNoiseCache::generateVectors() {
-  // the 2 blocks in opposite corners of the chunk
-  glm::ivec3 blockCorner1 = chunkCoordinate * CHUNK_SIZE;
-  glm::ivec3 blockCorner2 = (chunkCoordinate + 1) * CHUNK_SIZE;
+int ChunkPerlinNoiseCache3D::gridToIndex(glm::ivec3 gridCoordinate) const {
+  glm::ivec3 offset = gridCoordinate - corner1;
+  glm::ivec3 dims = corner2 - corner1 + 1;
+  return dims.x * (dims.y * offset.z + offset.y) + offset.x;
+}
+
+void ChunkPerlinNoiseCache3D::generateVectors() {
   // the 2 positions in the vector grid within which
   // all chunk blocks are contained in the smallest possible volume
-  corner1 = glm::ivec3(glm::floor(blockToGridScale(blockCorner1))) - 1;
-  corner2 = glm::ivec3(glm::ceil(blockToGridScale(blockCorner2)));
+  corner1 = glm::ivec3(glm::floor(blockToGridScale(chunkCoordinate * CHUNK_SIZE)));
+  corner2 = glm::ivec3(glm::ceil(blockToGridScale((chunkCoordinate + 1) * CHUNK_SIZE)));
   glm::ivec3 d = corner2 - corner1;
   // std::cout << "Start and end: " << startingVector.x << " " << endingVector.x << std::endl;
   std::cout << "As chunk " << chunkCoordinate.x << " " << chunkCoordinate.y <<" " << chunkCoordinate.z << std::endl;
@@ -493,9 +496,10 @@ void ChunkPerlinNoiseCache::generateVectors() {
     for (int y = 0; y <= d.y; y += 1) {
       for (int x = 0; x <= d.x; x += 1) {
         glm::ivec3 vectorGridCoordinate = corner1 + glm::ivec3(x, y, z);
+        int vectorIndex = gridToIndex(vectorGridCoordinate);
         // std::cout << "populated: " << (d.x + 1) *((d.y + 1) * z + y) + x << std::endl;
-        grid[(d.x + 1) *((d.y + 1) * z + y) + x] = pseudoRandomVector(vectorGridCoordinate);
-        glm::vec3 v = grid[(d.x + 1) *((d.y + 1) * z + y) + x];
+        grid[vectorIndex] = pseudoRandomVector(vectorGridCoordinate);
+        // glm::vec3 v = grid[(d.x + 1) *((d.y + 1) * z + y) + x];
         // std::cout << "I think: (" << vectorGridCoordinate.x << ", " << vectorGridCoordinate.y << ", " << vectorGridCoordinate.z << ") = <" << v.x << ", " << v.y << ", " << v.z << ">" << std::endl;
         // std::cout << "Local: (" << x << ", " << y << ", " << z << ")" << std::endl;
       }
@@ -503,7 +507,7 @@ void ChunkPerlinNoiseCache::generateVectors() {
   }
 }
 
-glm::vec3 ChunkPerlinNoiseCache::pseudoRandomVector(glm::ivec3 vectorGridCoordinate) const {
+glm::vec3 ChunkPerlinNoiseCache3D::pseudoRandomVector(glm::ivec3 vectorGridCoordinate) const {
   // reset srand
   srand(seed);
   int vectorID = vectorGridCoordinate.x * rand() + vectorGridCoordinate.y * rand() + vectorGridCoordinate.z * rand();
@@ -516,7 +520,7 @@ glm::vec3 ChunkPerlinNoiseCache::pseudoRandomVector(glm::ivec3 vectorGridCoordin
   return glm::normalize(glm::vec3((double) rand() / RAND_MAX, (double) rand() / RAND_MAX, (double) rand() / RAND_MAX) - 0.5f);
 }
 
-float ChunkPerlinNoiseCache::interpolate(float x, float y, float weight) const {
+float ChunkPerlinNoiseCache3D::interpolate(float x, float y, float weight) const {
   if (weight < 0 || weight > 1) {
     std::cout << "OUT OF BOUNDS WEIGHT: " << weight << std::endl;
     exit(0);
@@ -524,30 +528,35 @@ float ChunkPerlinNoiseCache::interpolate(float x, float y, float weight) const {
   return weight * weight * (3.0f - weight * 2.0f) * (y - x) + x;
 }
 
-float ChunkPerlinNoiseCache::sample(glm::ivec3 blockCoordinate) {
+float ChunkPerlinNoiseCache3D::sample(glm::ivec3 blockCoordinate) {
   // the block coordinate in terms of the grid (scaled down)
   glm::vec3 gridCoordinate = blockToGridScale(blockCoordinate);
   // bounding corners of the cell - vectors lie on integers
-  glm::ivec3 cellCorner1 = glm::ivec3(map(&greatestIntegerLessThan, gridCoordinate)) - corner1;
-  glm::ivec3 cellCorner2 = glm::ivec3(glm::ceil(gridCoordinate)) - corner1;
+  glm::ivec3 cellOrigin = glm::ivec3(glm::floor(gridCoordinate));
   glm::ivec3 d = corner2 - corner1;
-  glm::vec3 offset = gridCoordinate - glm::vec3(cellCorner1) - glm::vec3(corner1);
+  glm::vec3 offset = gridCoordinate - glm::vec3(cellOrigin);
   if (offset.x < 0 || offset.x > 1 || offset.y < 0 || offset.y > 1 || offset.z < 0 || offset.z > 1) {
     std::cout << "PFFSET BAD: " << offset.x << " " << offset.y << " " << offset.z << std::endl;
   }
+  // glm::ivec3 cornerD = cellCorner2 - cellCorner1;
+  // if (cornerD.x != 1 || cornerD.y != 1 || cornerD.z != 1) {
+  //   std::cout << "PFFSETss BAD: " << offset.x << " " << offset.y << " " << offset.z << std::endl;
+  //   std::cout << cellCorner1.x << " " << cellCorner1.y << " " << cellCorner1.z << std::endl;
+  //   std::cout << cellCorner2.x << " " << cellCorner2.y << " " << cellCorner2.z << std::endl;
+  // }
   // std::cout << "Calculating dot prods..." << std::endl;
 
   // calculate dot products and distances
   // 0 0 0; 1 0 0; 0 1 0; 1 1 0; 0 0 1; 1 0 1; 0 1 1; 1 1 1
   // std::vector<float> distanceToCorners(8);
   std::vector<float> dotProducts;
-  for (int z = cellCorner1.z; z <= cellCorner2.z; z += 1) {
-    for (int y = cellCorner1.y; y <= cellCorner2.y; y += 1) {
-      for (int x = cellCorner1.x; x <= cellCorner2.x; x += 1) {
-        glm::ivec3 cellCorner = glm::ivec3(x, y, z);
+  for (int z = 0; z <= 1; z += 1) {
+    for (int y = 0; y <= 1; y += 1) {
+      for (int x = 0; x <= 1; x += 1) {
+        glm::ivec3 cellCorner = glm::ivec3(x, y, z) + cellOrigin;
         //distanceToCorners.push_back(glm::distance(cellCorner, gridCoordinate));
-        int vectorIndex = (d.x + 1) *((d.y + 1) * z + y) + x;
-        if (vectorIndex < 0 || vectorIndex >= (d.x+1) *(d.y+1)*(d.z+1)) {
+        int vectorIndex = gridToIndex(cellCorner);
+        if (vectorIndex < 0 || vectorIndex >= (d.x+1) *(d.y+1)*(d.z+1) || x < 0 || y < 0 || z < 0) {
           std::cout << "OUT OF BOUNDS VECTOR!! " << vectorIndex << " " << x << " " << y << " " << z << std::endl;
         }
   // std::cout << "trying to index " << vectorIndex << " " << grid->length() << std::endl;
@@ -560,8 +569,7 @@ float ChunkPerlinNoiseCache::sample(glm::ivec3 blockCoordinate) {
     std::cout << "DOT PRODUCTS HAS SIZE " << dotProducts.size() << std::endl;
     std::cout << gridCoordinate.x << " " << gridCoordinate.y << " " << gridCoordinate.z << std::endl;
     std::cout << corner1.x << " " << corner1.y << " " << corner1.z << std::endl;
-    std::cout << cellCorner1.x << " " << cellCorner1.y << " " << cellCorner1.z << std::endl;
-    std::cout << cellCorner2.x << " " << cellCorner2.y << " " << cellCorner2.z << std::endl;
+    std::cout << cellOrigin.x << " " << cellOrigin.y << " " << cellOrigin.z << std::endl;
   }
   // std::cout << dotProducts[0] << " " << dotProducts[1] << " " << dotProducts[2] << " " << dotProducts[3] << " " << dotProducts[4] << " " << dotProducts[5] << " " << dotProducts[6] << " " << dotProducts[7] << std::endl;
   // std::cout << "offsets: " << offset.x << " " << offset.y << " " << offset.z << std::endl;
@@ -657,8 +665,8 @@ void TerrainGod::update() {
 }
 
 void TerrainGod::generateChunk(glm::ivec3 chunkCoordinate, std::unordered_map<glm::ivec3, glm::vec3> &grid) {
-  ChunkPerlinNoiseCache cache1 = ChunkPerlinNoiseCache(40, world.seed, chunkCoordinate);
-  ChunkPerlinNoiseCache cache2 = ChunkPerlinNoiseCache(9, world.seed, chunkCoordinate);
+  ChunkPerlinNoiseCache3D cache1 = ChunkPerlinNoiseCache3D(40, world.seed, chunkCoordinate);
+  ChunkPerlinNoiseCache3D cache2 = ChunkPerlinNoiseCache3D(9, world.seed, chunkCoordinate);
   glm::ivec3 d = cache1.corner2 - cache1.corner1;
   for (int z = 0; z <= d.z; z += 1) {
     for (int y = 0; y <= d.y; y += 1) {

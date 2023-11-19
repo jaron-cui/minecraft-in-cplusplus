@@ -164,7 +164,7 @@ class TerrainGod: public God {
     void update() override;
 };
 
-class ChunkPerlinNoiseCache {
+class ChunkPerlinNoiseCache3D {
   private:
     int seed;
     float scale;
@@ -174,14 +174,16 @@ class ChunkPerlinNoiseCache {
 
     void generateVectors();
     glm::vec3 blockToGridScale(glm::ivec3 blockCoordinate) const;
+    int gridToIndex(glm::ivec3 gridCoordinate) const;
     glm::vec3 pseudoRandomVector(glm::ivec3 vectorGridCoordinate) const;
     float interpolate(float x, float y, float weight) const;
   public:
+  // TODO: make these fields private again
     glm::ivec3 corner1;
     glm::ivec3 corner2;
     glm::vec3* grid;
-    ChunkPerlinNoiseCache(float noiseScale, int worldSeed, glm::ivec3 chunkCoordinates);
-    ~ChunkPerlinNoiseCache();
+    ChunkPerlinNoiseCache3D(float noiseScale, int worldSeed, glm::ivec3 chunkCoordinates);
+    ~ChunkPerlinNoiseCache3D();
     float sample(glm::ivec3 blockCoordinate);
 };
 
@@ -197,33 +199,39 @@ class ChunkPerlinNoiseCache {
 //     glm::vec2* grid;
 
 //     void generateVectors();
-//     glm::vec3 blockToGridScale(glm::ivec2 blockCoordinate) const;
-//     glm::vec3 pseudoRandomVector(glm::ivec2 vectorGridCoordinate) const;
+//     glm::vec2 blockToGridScale(glm::ivec2 blockCoordinate) const;
+//     glm::vec2 pseudoRandomVector(glm::ivec2 vectorGridCoordinate) const;
 //     float interpolate(float x, float y, float weight) const;
 //   public:
-//     ChunkPerlinNoiseCache2D(float noiseScale, int worldSeed, glm::ivec2 chunkCoordinates);
-//     ~ChunkPerlinNoiseCache2D();
-//     float sample(glm::ivec2 localCoordinate);
+//     ChunkPerlinNoiseCache3D(float noiseScale, int worldSeed, glm::ivec2 chunkCoordinates);
+//     ~ChunkPerlinNoiseCache3D();
+//     float sample(glm::ivec2 blockCoordinate);
 // };
 
-// ChunkPerlinNoiseCache2D::ChunkPerlinNoiseCache2D(
+// ChunkPerlinNoiseCache2D::ChunkPerlinNoiseCache3D(
 //   float noiseScale, int worldSeed, glm::ivec2 chunkCoordinates) {
-//   seed = worldSeed;
 //   scale = noiseScale;
+//   seed = worldSeed;
 //   chunkCoordinate = chunkCoordinates;
+//   generateVectors();
 // }
 
-// ~ChunkPerlinNoiseCache2D() {
+// ChunkPerlinNoiseCache2D::~ChunkPerlinNoiseCache3D() {
 //   delete [] grid;
 // }
 
-// float sample(glm::ivec2 localCoordinate) {
-//   glm::ivec2
+// void ChunkPerlinNoiseCache2D::generateVectors() {
+//   corner1 = glm::ivec2(glm::floor(chunkCoordinate * CHUNK_SIZE));
+//   corner2 = glm::ivec2(glm::ceil((chunkCoordinate + 1) * CHUNK_SIZE));
 // }
+// glm::vec2 ChunkPerlinNoiseCache2D::blockToGridScale(glm::ivec2 blockCoordinate) const;
+// glm::vec2 ChunkPerlinNoiseCache2D::pseudoRandomVector(glm::ivec2 vectorGridCoordinate) const;
+// float ChunkPerlinNoiseCache2D::interpolate(float x, float y, float weight) const;
+// float ChunkPerlinNoiseCache2D::sample(glm::ivec2 blockCoordinate);
 
 struct NoiseProfile {
   float magnitude;
-  ChunkPerlinNoiseCache &sampler;
+  ChunkPerlinNoiseCache3D &sampler;
 };
 
 class ChunkGenerator {
