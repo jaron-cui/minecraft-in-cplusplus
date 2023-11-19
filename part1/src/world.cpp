@@ -87,18 +87,37 @@ float axisValue(glm::vec3 axis) {
 void otherAxes(glm::ivec3 axis, glm::ivec3 &r1, glm::ivec3 &r2) {
   r1 = axis.x ? POSY : POSX;
   r2 = axis.z ? POSY : POSZ;
+  if (axis.x) {
+    r1 = POSY;
+    r2 = POSZ;
+  } else if (axis.y) {
+    r1 = POSZ;
+    r2 = POSX;
+  } else {
+    r1 = POSX;
+    r2 = POSY;
+  }
 }
 
 float roundTieDown(float x) {
   int base = std::floor(x);
   float diff = x - base;
-  return diff > 0.5000001f ? base + 1 : base;
+  return diff > 0.50001f ? base + 1 : base;
 }
 
 float roundTieUp(float x) {
   int base = std::floor(x);
   float diff = x - base;
-  return diff < 0.4999999f ? base : base + 1;
+  return diff < 0.49999f ? base : base + 1;
+}
+
+float greatestIntegerLessThan(float x) {
+  int floor = std::floor(x);
+  return floor == x ? x - 1 : floor;
+}
+
+glm::vec3 map(float (*f)(float), glm::vec3 v) {
+  return glm::vec3(f(v.x), f(v.y), f(v.z));
 }
 
 // check a wall of blocks in the direction of a specific axis for collisions
@@ -378,23 +397,38 @@ OBJModel Player::getModel() {
 EntityGod::EntityGod(World &world): God(world) {};
 
 void EntityGod::update() {
+  
+        // std::cout << "lock 5" << std::endl;
+  world.divineIntervention.lock();
   for (auto &it : world.entities) {
     Entity &entity = it.second;
     entity.update(world);
   }
+  world.divineIntervention.unlock();
+  
+        // std::cout << "unlock 5" << std::endl;
 }
 
 void EntityGod::createEntity(Entity entity) {
   glm::ivec3 spawnChunk = World::blockToChunkCoordinate(glm::ivec3(entity.position));
   // TODO: add name check
+  
+        // std::cout << "lock 6" << std::endl;
+  world.divineIntervention.lock();
   world.entities[entity.name] = entity;
   if (!world.hasChunk(spawnChunk)) {
     // TODO: make a better response here
     std::cout << "CANNOT SPAWN AN ENTITY WHERE THERE IS NO CHUNK" << std::endl;
+    world.divineIntervention.unlock();
+    
+        // std::cout << "unlock 6" << std::endl;
     return;
   }
   Chunk &chunk = world.getChunk(spawnChunk);
   chunk.entityNames.insert(entity.name);
+  world.divineIntervention.unlock();
+  
+        // std::cout << "unlock 6 her" << std::endl;
 }
 
 struct entityNameEquals : public std::unary_function<Entity, bool> {
@@ -409,10 +443,14 @@ bool EntityGod::seesEntity(std::string name) {
 
 void EntityGod::removeEntity(std::string name) {
   for (glm::ivec3 chunkCoordinate : realm) {
+    world.divineIntervention.lock();
     Chunk &chunk = world.getChunk(chunkCoordinate);
     chunk.entityNames.erase(name);
+    world.divineIntervention.unlock();
   }
+  world.divineIntervention.lock();
   world.entities.erase(name);
+  world.divineIntervention.unlock();
 }
 
 Entity& EntityGod::getEntity(std::string name) {
@@ -448,7 +486,8 @@ void ChunkPerlinNoiseCache::generateVectors() {
   corner2 = glm::ivec3(glm::ceil(blockToGridScale(blockCorner2)));
   glm::ivec3 d = corner2 - corner1;
   // std::cout << "Start and end: " << startingVector.x << " " << endingVector.x << std::endl;
-  
+  std::cout << "As chunk " << chunkCoordinate.x << " " << chunkCoordinate.y <<" " << chunkCoordinate.z << std::endl;
+  std::cout << "w scale " << scale << " corners: " << corner1.x << " " << corner1.y << " " << corner1.z << "; " << corner2.x << " " << corner2.y << " " << corner2.z << std::endl;
   grid = new glm::vec3[(d.z + 1) * (d.y + 1) * (d.x + 1)];
   for (int z = 0; z <= d.z; z += 1) {
     for (int y = 0; y <= d.y; y += 1) {
@@ -489,27 +528,40 @@ float ChunkPerlinNoiseCache::sample(glm::ivec3 blockCoordinate) {
   // the block coordinate in terms of the grid (scaled down)
   glm::vec3 gridCoordinate = blockToGridScale(blockCoordinate);
   // bounding corners of the cell - vectors lie on integers
-  glm::ivec3 loCellCorner = glm::ivec3(glm::floor(gridCoordinate)) - corner1;
-  glm::ivec3 hiCellCorner = glm::ivec3(glm::ceil(gridCoordinate)) - corner1;
+  glm::ivec3 cellCorner1 = glm::ivec3(map(&greatestIntegerLessThan, gridCoordinate)) - corner1;
+  glm::ivec3 cellCorner2 = glm::ivec3(glm::ceil(gridCoordinate)) - corner1;
   glm::ivec3 d = corner2 - corner1;
-  glm::vec3 offset = gridCoordinate - glm::vec3(loCellCorner) - glm::vec3(corner1);
+  glm::vec3 offset = gridCoordinate - glm::vec3(cellCorner1) - glm::vec3(corner1);
+  if (offset.x < 0 || offset.x > 1 || offset.y < 0 || offset.y > 1 || offset.z < 0 || offset.z > 1) {
+    std::cout << "PFFSET BAD: " << offset.x << " " << offset.y << " " << offset.z << std::endl;
+  }
   // std::cout << "Calculating dot prods..." << std::endl;
 
   // calculate dot products and distances
   // 0 0 0; 1 0 0; 0 1 0; 1 1 0; 0 0 1; 1 0 1; 0 1 1; 1 1 1
   // std::vector<float> distanceToCorners(8);
   std::vector<float> dotProducts;
-  for (int z = loCellCorner.z; z <= hiCellCorner.z; z += 1) {
-    for (int y = loCellCorner.y; y <= hiCellCorner.y; y += 1) {
-      for (int x = loCellCorner.x; x <= hiCellCorner.x; x += 1) {
+  for (int z = cellCorner1.z; z <= cellCorner2.z; z += 1) {
+    for (int y = cellCorner1.y; y <= cellCorner2.y; y += 1) {
+      for (int x = cellCorner1.x; x <= cellCorner2.x; x += 1) {
         glm::ivec3 cellCorner = glm::ivec3(x, y, z);
         //distanceToCorners.push_back(glm::distance(cellCorner, gridCoordinate));
         int vectorIndex = (d.x + 1) *((d.y + 1) * z + y) + x;
+        if (vectorIndex < 0 || vectorIndex >= (d.x+1) *(d.y+1)*(d.z+1)) {
+          std::cout << "OUT OF BOUNDS VECTOR!! " << vectorIndex << " " << x << " " << y << " " << z << std::endl;
+        }
   // std::cout << "trying to index " << vectorIndex << " " << grid->length() << std::endl;
         // std::cout << "vector " << (d.x + 1) *((d.y + 1) * z + y) + x << ": " << grid.grid[vectorIndex].x << " " << grid.grid[vectorIndex].y << " " << grid.grid[vectorIndex].z << std::endl;
         dotProducts.push_back(glm::dot(grid[vectorIndex], gridCoordinate - glm::vec3(cellCorner)));
       }
     }
+  }
+  if (dotProducts.size() != 8) {
+    std::cout << "DOT PRODUCTS HAS SIZE " << dotProducts.size() << std::endl;
+    std::cout << gridCoordinate.x << " " << gridCoordinate.y << " " << gridCoordinate.z << std::endl;
+    std::cout << corner1.x << " " << corner1.y << " " << corner1.z << std::endl;
+    std::cout << cellCorner1.x << " " << cellCorner1.y << " " << cellCorner1.z << std::endl;
+    std::cout << cellCorner2.x << " " << cellCorner2.y << " " << cellCorner2.z << std::endl;
   }
   // std::cout << dotProducts[0] << " " << dotProducts[1] << " " << dotProducts[2] << " " << dotProducts[3] << " " << dotProducts[4] << " " << dotProducts[5] << " " << dotProducts[6] << " " << dotProducts[7] << std::endl;
   // std::cout << "offsets: " << offset.x << " " << offset.y << " " << offset.z << std::endl;
@@ -550,8 +602,9 @@ Chunk ChunkGenerator::generateChunk() {
     // std::cout << "layer ------------------------" << std::endl;
     for (int y = 0; y < CHUNK_SIZE; y += 1) {
       for (int x = 0; x < CHUNK_SIZE; x += 1) {
-        float noiseValue = sampleCompoundNoise(glm::ivec3(x, y, z) + chunkCoordinate * CHUNK_SIZE);
-        float airThreshold = 0.2 - glm::smoothstep(-15.0f, -0.5f, float(y) + chunkCoordinate.y * CHUNK_SIZE) * 0.6;
+        glm::ivec3 blockCoordinate = glm::ivec3(x, y, z) + chunkCoordinate * CHUNK_SIZE;
+        float noiseValue = sampleCompoundNoise(blockCoordinate);
+        float airThreshold = 0.6 - glm::smoothstep(-15.0f, -0.5f, float(blockCoordinate.y)) * 0.8;
         uint8_t blockType;
         if (noiseValue > airThreshold) {
           // std::cout << "  ";
@@ -580,6 +633,7 @@ Chunk ChunkGenerator::generateChunk() {
 TerrainGod::TerrainGod(World &world): God(world) {}
 
 void TerrainGod::update() {
+  std::unordered_map<glm::ivec3, glm::vec3> grid;
   std::cout << "updating terrain!" << std::endl;
   for (int z = -radius; z <= radius; z += 1) {
     for (int y = -radius; y <= radius; y += 1) {
@@ -588,22 +642,53 @@ void TerrainGod::update() {
         if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(World::blockToChunkCoordinate(origin))) > radius) {
           continue;
         }
-        if (world.hasChunk(chunkCoordinate)) {
-          continue;
+        // std::cout << "lock 1" << std::endl;
+        world.divineIntervention.lock();
+        if (!world.hasChunk(chunkCoordinate)) {
+          world.divineIntervention.unlock();
+          // std::cout << "unlock 1" << std::endl;
+          generateChunk(chunkCoordinate, grid);
         }
-        generateChunk(chunkCoordinate);
+        world.divineIntervention.unlock();
+        // std::cout << "unlock 1 h" << std::endl;
       }
     }
   }
 }
 
-void TerrainGod::generateChunk(glm::ivec3 chunkCoordinate) {
+void TerrainGod::generateChunk(glm::ivec3 chunkCoordinate, std::unordered_map<glm::ivec3, glm::vec3> &grid) {
   ChunkPerlinNoiseCache cache1 = ChunkPerlinNoiseCache(40, world.seed, chunkCoordinate);
   ChunkPerlinNoiseCache cache2 = ChunkPerlinNoiseCache(9, world.seed, chunkCoordinate);
+  glm::ivec3 d = cache1.corner2 - cache1.corner1;
+  for (int z = 0; z <= d.z; z += 1) {
+    for (int y = 0; y <= d.y; y += 1) {
+      for (int x = 0; x <= d.x; x += 1) {
+        glm::ivec3 gridCoordinate = glm::ivec3(x, y, z) + cache1.corner1;
+        int vectorIndex = (d.x + 1) *((d.y + 1) * z + y) + x;
+        if (grid.find(gridCoordinate) == grid.end()) {
+          grid[gridCoordinate] = cache1.grid[vectorIndex];
+        } else {
+          glm::vec3 p = grid[gridCoordinate];
+          glm::vec3 c = cache1.grid[vectorIndex];
+          if (p != c) {
+            std::cout << "I disagree! Previous at " << gridCoordinate.x << " " << gridCoordinate.y << " " << gridCoordinate.z << "=" << p.x << " " << p.y << " " << p.z << ", Current=" << c.x << " " << c.y << " " << c.z << std::endl;
+          }
+        }
+      }
+    }
+  }
+
   NoiseProfile noise1 = {3.0f, cache1};
   NoiseProfile noise2 = {0.5f, cache2};
   std::vector<NoiseProfile*> noises{&noise1, &noise2};
-  world.setChunk(chunkCoordinate, ChunkGenerator(chunkCoordinate, world.seed, noises).generateChunk());
+  Chunk chunk = ChunkGenerator(chunkCoordinate, world.seed, noises).generateChunk();
+  
+        // std::cout << "lock 3" << std::endl;
+  world.divineIntervention.lock();
+  world.setChunk(chunkCoordinate, chunk);
+  world.divineIntervention.unlock();
+  
+        // std::cout << "unlock 3" << std::endl;
 }
 
 void TerrainGod::generateSpawn() {
@@ -615,15 +700,14 @@ void TerrainGod::generateSpawn() {
       chunk.blocks[z][y][x] = STONE;
     }
   }
-  int rad = 5;
-  int seed = time(NULL);
-  for (int z = -rad; z <= rad; z += 1) {
-    for (int x = -rad; x <= rad; x += 1) {
-      glm::ivec3 chunkCoordinate = {x, -1, z};
-      generateChunk(chunkCoordinate);
-    }
-  }
+  update();
+  
+        // std::cout << "lock 4" << std::endl;
+  world.divineIntervention.lock();
   world.setChunk({0, -1, 0}, chunk);
+  world.divineIntervention.unlock();
+  
+        // std::cout << "unlock 4" << std::endl;
 }
 
 /*
@@ -703,30 +787,30 @@ OBJModel Chunk::calculateChunkOBJ() {
   return builder.model;
 }
 
-// setting a chunk will also erase the cached version
-void RenderGod::setChunk(glm::ivec3 chunkCoordinate, Chunk chunk) {
-  world.setChunk(chunkCoordinate, chunk);
-  realm.erase(chunkCoordinate);
-  scene.deleteMesh(Chunk::id(chunkCoordinate));
-}
-
 RenderGod::RenderGod(World &world, Scene &openGLScene): God(world), scene(openGLScene) {}
 
-// // get the cache of vertices to render
-// std::vector<VBOVertex> RenderWorld::getVertexCache() {
-//   return worldVertexCache;
-// }
-// update the cache
-void RenderGod::update() {
-  int chunkCount = 0;
+void RenderGod::uploadCache() {
+  for (auto it : cache) {
+    scene.createMeshFromCache(Chunk::id(it.first), it.second);
+  }
+  cache.clear();
+}
+
+void RenderGod::cullFarChunks(int allowance) {
   glm::ivec3 originChunk = World::blockToChunkCoordinate(origin);
   for (glm::ivec3 chunkCoordinate : realm) {
-    if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(originChunk)) <= radius) {
+    if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(originChunk)) <= radius + allowance) {
       continue;
     }
     scene.deleteMesh(Chunk::id(chunkCoordinate));
     realm.erase(chunkCoordinate);
   }
+}
+
+// update the cache
+void RenderGod::update() {
+  int chunkCount = 0;
+  glm::ivec3 originChunk = World::blockToChunkCoordinate(origin);
   for (int z = originChunk.z - radius; z < originChunk.z + radius; z += 1) {
     for (int y = originChunk.y - radius; y < originChunk.y + radius; y += 1) {
       for (int x = originChunk.x - radius; x < originChunk.x + radius; x += 1) {
@@ -743,23 +827,32 @@ void RenderGod::update() {
           continue;
         }
         // TODO: if a chunk does not exist, we should generate it instead of skipping it
+        // std::cout << "lock 2" << std::endl;
+        world.divineIntervention.lock();
         if (!world.hasChunk(chunkCoordinate)) {
+          world.divineIntervention.unlock();
+          
+        // std::cout << "unlock 2 here" << std::endl;
           // std::cout << "chunk does not exist" << std::endl;
           continue;
         }
+        realm.insert(chunkCoordinate);
         chunkCount += 1;
 
           // std::cout << "rendering chunk!------------" << std::endl;
         OBJModel model = scaleOBJ(offsetOBJ(world.getChunk(chunkCoordinate).calculateChunkOBJ(), glm::vec3(chunkCoordinate * CHUNK_SIZE)), BLOCK_SCALE);
-        model.mtl = {"media/textures.ppm"};
-        if (chunkCoordinate.x == 0 && chunkCoordinate.y == -1 && chunkCoordinate.z == 0) {
-          std::cout << "I set it to good!" << std::endl;
-          model.good = true;
-        }
         model.vertexNormals.push_back({0, 0, 0});
+        model.mtl.mapKD = "media/textures.ppm";
+        world.divineIntervention.unlock();
         
-        scene.createMesh(Chunk::id(chunkCoordinate), model);
-        realm.insert(chunkCoordinate);
+        // std::cout << "unlock 2" << std::endl;
+
+        std::vector<VBOVertex> data;
+        std::vector<GLuint> indices;
+        if (!encodeOBJ(model, data, indices)) {
+          throw std::invalid_argument("Invalid OBJ cannot be loaded into VBO.");
+        }
+        cache[chunkCoordinate] = {data, indices, "media/textures.ppm"};
       }
     }
   }

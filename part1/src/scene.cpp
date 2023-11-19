@@ -143,17 +143,22 @@ void Mesh::setVBOfromOBJ(OBJModel model) {
   if (!encodeOBJ(model, data, indices)) {
     throw std::invalid_argument("Invalid OBJ cannot be loaded into VBO.");
   }
-  vboSize = data.size();
-  bufferSize = indices.size();
+  RenderCache cache = {data, indices, model.mtl.mapKD};
+  setVBO(cache);
+}
+
+void Mesh::setVBO(RenderCache &cache) {
+  vboSize = cache.vertices.size();
+  bufferSize = cache.indices.size();
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, 						// Kind of buffer we are working with 
                                             // (e.g. GL_ARRAY_BUFFER or GL_ELEMENT_ARRAY_BUFFER)
-              data.size() * sizeof(VBOVertex), 	// Size of data in bytes
-              data.data(), 											// Raw array of data
+              cache.vertices.size() * sizeof(VBOVertex), 	// Size of data in bytes
+              cache.vertices.data(), 											// Raw array of data
               GL_STATIC_DRAW);
   // set up indexing
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, cache.indices.size() * sizeof(GLuint), cache.indices.data(), GL_STATIC_DRAW);
   glBindVertexArray(0);
 }
 
@@ -195,15 +200,24 @@ void Mesh::setPosition(glm::vec3 offset) {
   updateModel();
 }
 
-Mesh::Mesh(GLuint vao, OBJModel model) {
+void Mesh::initializeVAO(GLuint vao) {
   glBindVertexArray(vao);
   glGenBuffers(1, &vbo);
   glGenBuffers(1, &buffer);
 
   glBindVertexArray(0);
+}
 
+Mesh::Mesh(GLuint vao, OBJModel model) {
+  initializeVAO(vao);
   baseModel = model;
   setVBOfromOBJ(model);
+}
+
+Mesh::Mesh(GLuint vao, RenderCache cache) {
+  initializeVAO(vao);
+  baseModel.mtl.mapKD = cache.texture;
+  setVBO(cache);
 }
 
 void Mesh::clearBuffers() {
@@ -266,6 +280,20 @@ bool Scene::createMesh(std::string name, OBJModel obj) {
   return true;
 }
 
+bool Scene::createMeshFromCache(std::string name, RenderCache cache) {
+  if (meshes.find(name) != meshes.end()) {
+    return false;
+  }
+  // std::cout << "creating mesh" << std::endl;
+  Mesh* mesh = new Mesh(vao, cache);
+  // std::cout << "storing mesh" << std::endl;
+  meshes[name] = mesh;
+  tryLoadingTexture(cache.texture, textures);
+  
+  // std::cout << "done storing mesh" << std::endl;
+  return true;
+}
+
 Mesh* Scene::getMesh(std::string name) {
   return meshes[name];
 }
@@ -277,6 +305,18 @@ void Scene::deleteMesh(std::string name) {
   meshes[name]->clearBuffers();
   delete meshes[name];
   meshes.erase(name);
+}
+
+void Scene::hideMesh(std::string name) {
+  hiddenMeshes.insert(name);
+}
+
+void Scene::showMesh(std::string name) {
+  hiddenMeshes.erase(name);
+}
+
+bool Scene::meshHidden(std::string name) {
+  return hiddenMeshes.find(name) != hiddenMeshes.end();
 }
 
 bool Scene::createLight(std::string name, PointLight data) {
@@ -412,6 +452,10 @@ void Scene::draw(){
   uploadUniforms();
   //Render data
   for (auto entry : meshes) {
+    if (meshHidden(entry.first)) {
+	    glBindVertexArray(0);
+      continue;
+    }
     Mesh* mesh = entry.second;
 
     std::string diffusePath = mesh->getBaseModel().mtl.mapKD;

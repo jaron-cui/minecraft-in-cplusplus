@@ -64,38 +64,86 @@ GLuint CreateShaderProgram(const std::string& vertexShaderSource, const std::str
 */
 GLuint CreateGraphicsPipeline();
 
+// a structure representing a vertex entry in a VBO
+struct VBOVertex {
+  float x, y, z;
+  float nx, ny, nz;
+  float tx, ty;
+  VBOVertex(glm::vec3 position, glm::vec3 normal, glm::vec2 tc) {
+    x = position.x;
+    y = position.y;
+    z = position.z;
+    nx = normal.x;
+    ny = normal.y;
+    nz = normal.z;
+    tx = tc.x;
+    ty = tc.y;
+  }
+
+  inline bool operator==(const VBOVertex &other) const {
+    // bool comparison = result of comparing 'this' to 'other'
+    return x == other.x && y == other.y && z == other.z
+        && nx == other.nx && ny == other.ny && nz == other.nz
+        && tx == other.tx && ty == other.ty;
+  }
+};
+
+namespace std {
+  template<>
+  struct hash<VBOVertex> {
+    inline size_t operator()(const VBOVertex& x) const {
+      return x.x + x.y * 3 + x.z * 5
+          + x.nx * 17 + x.ny * 19 + x.nz * 23
+          + x.tx * 29 + x.ty * 31;
+    }
+  };
+}
+
+bool encodeOBJ(OBJModel model, std::vector<VBOVertex> &data, std::vector<GLuint> &indices);
+
+struct RenderCache {
+  std::vector<VBOVertex> vertices;
+  std::vector<GLuint> indices;
+  std::string texture;
+};
+
 class Mesh {
   private:
-  GLuint vbo = 0;
-  size_t vboSize = 0;
-  GLuint buffer = 0;
-  size_t bufferSize = 0;
-  OBJModel baseModel;
-  float scale;
-  glm::vec3 position;
+    GLuint vbo = 0;
+    size_t vboSize = 0;
+    GLuint buffer = 0;
+    size_t bufferSize = 0;
+    OBJModel baseModel;
+    float scale;
+    glm::vec3 position;
+    void initializeVAO(GLuint vao);
   public:
-  Mesh(GLuint vao, OBJModel model);
-  void clearBuffers();
+    Mesh(GLuint vao, OBJModel model);
+    Mesh(GLuint vao, RenderCache cache);
 
-  void setVBOfromOBJ(OBJModel model);
+    void clearBuffers();
 
-  GLuint getVBO();
+    void setVBOfromOBJ(OBJModel model);
 
-  size_t getVBOSize();
+    void setVBO(RenderCache &cache);
 
-  GLuint getElementBuffer();
+    GLuint getVBO();
 
-  size_t getElementBufferSize();
+    size_t getVBOSize();
 
-  glm::vec3 getPosition();
+    GLuint getElementBuffer();
 
-  void updateModel();
+    size_t getElementBufferSize();
 
-  void setScale(float factor);
+    glm::vec3 getPosition();
 
-  void setPosition(glm::vec3 offset);
+    void updateModel();
 
-  OBJModel& getBaseModel();
+    void setScale(float factor);
+
+    void setPosition(glm::vec3 offset);
+
+    OBJModel& getBaseModel();
 };
 
 // represents a point light
@@ -125,6 +173,7 @@ class Scene {
     std::unordered_map<std::string, Mesh*> meshes;
     std::unordered_map<std::string, PointLight*> lights;
     std::unordered_map<std::string, Texture*> textures;
+    std::unordered_set<std::string> hiddenMeshes;
     void setupVertexArrayObject();
     void predraw();
     GLint checkedUniformLocation(std::string uniformName);
@@ -133,6 +182,10 @@ class Scene {
     Scene(int width, int height, Camera &camera);
     ~Scene();
     bool createMesh(std::string name, OBJModel obj);
+    bool createMeshFromCache(std::string name, RenderCache cache);
+    void hideMesh(std::string name);
+    void showMesh(std::string name);
+    bool meshHidden(std::string name);
     Mesh* getMesh(std::string name);
     void deleteMesh(std::string name);
     bool createLight(std::string name, PointLight light);
@@ -145,38 +198,3 @@ class Scene {
 
 // get the uniform location and run generic checks
 GLint checkedUniformLocation(GLuint pipeline, std::string uniformName);
-
-// a structure representing a vertex entry in a VBO
-struct VBOVertex {
-  float x, y, z;
-  float nx, ny, nz;
-  float tx, ty;
-  VBOVertex(glm::vec3 position, glm::vec3 normal, glm::vec2 tc) {
-    x = position.x;
-    y = position.y;
-    z = position.z;
-    nx = normal.x;
-    ny = normal.y;
-    nz = normal.z;
-    tx = tc.x;
-    ty = tc.y;
-  }
-
-  inline bool operator==(const VBOVertex &other) const {
-      // bool comparison = result of comparing 'this' to 'other'
-      return x == other.x && y == other.y && z == other.z
-          && nx == other.nx && ny == other.ny && nz == other.nz
-          && tx == other.tx && ty == other.ty;
-  }
-};
-
-namespace std {
-  template<>
-  struct hash<VBOVertex> {
-    inline size_t operator()(const VBOVertex& x) const {
-      return x.x + x.y * 3 + x.z * 5
-          + x.nx * 17 + x.ny * 19 + x.nz * 23
-          + x.tx * 29 + x.ty * 31;
-    }
-  };
-}

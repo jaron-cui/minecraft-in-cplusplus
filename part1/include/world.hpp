@@ -103,6 +103,7 @@ class World {
     std::unordered_map<glm::ivec3, Chunk> chunks;
     std::unordered_map<std::string, Entity> entities;
   public:
+    std::mutex divineIntervention;
     World(int worldSeed) {
       seed = worldSeed;
     }
@@ -156,7 +157,7 @@ class EntityGod: public God {
 
 class TerrainGod: public God {
   private:
-    void generateChunk(glm::ivec3 chunkCoordinate);
+    void generateChunk(glm::ivec3 chunkCoordinate, std::unordered_map<glm::ivec3, glm::vec3> &grid);
   public:
     TerrainGod(World &world);
     void generateSpawn();
@@ -170,15 +171,15 @@ class ChunkPerlinNoiseCache {
     int dimensions;
     
     glm::ivec3 chunkCoordinate;
-    glm::ivec3 corner1;
-    glm::ivec3 corner2;
-    glm::vec3* grid;
 
     void generateVectors();
     glm::vec3 blockToGridScale(glm::ivec3 blockCoordinate) const;
     glm::vec3 pseudoRandomVector(glm::ivec3 vectorGridCoordinate) const;
     float interpolate(float x, float y, float weight) const;
   public:
+    glm::ivec3 corner1;
+    glm::ivec3 corner2;
+    glm::vec3* grid;
     ChunkPerlinNoiseCache(float noiseScale, int worldSeed, glm::ivec3 chunkCoordinates);
     ~ChunkPerlinNoiseCache();
     float sample(glm::ivec3 blockCoordinate);
@@ -239,11 +240,15 @@ class ChunkGenerator {
 class RenderGod: public God {
   private:
     Scene &scene;
+    std::unordered_map<glm::ivec3, RenderCache> cache;
   public:
     RenderGod(World &world, Scene &scene);
-    void setChunk(glm::ivec3 chunkCoordinate, Chunk chunk);
     // update the cache
     void update() override;
+    void uploadCache();
+    // allowance indicates how far chunks beyond the render radius
+    // are allowed to stay before they get culled from memory
+    void cullFarChunks(int allowance);
 };
 
 struct RenderBlockFace {

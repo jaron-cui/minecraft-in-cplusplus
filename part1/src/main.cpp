@@ -184,11 +184,14 @@ void MainLoop(Game &game){
   int tick = 0;
   // process physics once per tick
   int physicsTick = 1;
-  // update rendering once per second
-  int renderTick = FRAMERATE;
+  // update rendering once every 2 seconds
+  int renderTick = FRAMERATE * 2;
   // update generation once every 5 seconds
   int generationTick = FRAMERATE * 5;
 	// While application is running
+  std::thread renderThread;
+  std::thread terrainGenerationThread;
+  // thread geenrationthread;
 	while(!gQuit){
     tick += 1;
     const auto frameEnd = std::chrono::steady_clock::now() + std::chrono::milliseconds(FRAMETIME_MS);
@@ -204,11 +207,20 @@ void MainLoop(Game &game){
       game.entityGod.update();
     }
     if (tick % renderTick == 0) {
+      // wrap up rendering stuff
+      if (renderThread.joinable()) {
+        renderThread.join();
+      }
+      game.renderGod.cullFarChunks(2);
+      game.renderGod.uploadCache();
+      // transfer rendered chunks to vbo
       game.renderGod.setOrigin(player.getPosition());
-      game.renderGod.update();
+      renderThread = std::thread(&RenderGod::update, &game.renderGod);
     }
     if (tick % generationTick == 0) {
+      // geenrationthread.join()
       game.terrainGod.setOrigin(player.getPosition());
+      // geenrationthread.startandinthnewthings()
       game.terrainGod.update();
     }
 		// Draw Calls in OpenGL
@@ -217,6 +229,9 @@ void MainLoop(Game &game){
 		SDL_GL_SwapWindow(gGraphicsApplicationWindow);
     std::this_thread::sleep_until(frameEnd);
 	}
+  if (renderThread.joinable()) {
+    renderThread.join();
+  }
 }
 
 /**
