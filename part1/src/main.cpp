@@ -92,6 +92,7 @@ struct Game {
   TerrainGod &terrainGod;
   EntityGod &entityGod;
   RenderGod &renderGod;
+  int timeSprinting = 0;
 };
 
 /**
@@ -129,10 +130,25 @@ void Input(Game &game) {
 
   // Retrieve keyboard state
   const Uint8 *state = SDL_GetKeyboardState(NULL);
+  int sprintTransitionTime = float(FRAMERATE) / 12;
+
+  float acceleration;
+  float maxSpeed;
+  float fov = glm::smoothstep(0.0f, float(sprintTransitionTime), float(game.timeSprinting)) * 10.0f + 45.0f;
+  if (state[SDL_SCANCODE_LCTRL]) {
+    acceleration = 0.011;
+    maxSpeed = 0.078;
+    game.timeSprinting += game.timeSprinting < sprintTransitionTime ? 1 : 0;
+  } else {
+    acceleration = 0.008;
+    maxSpeed = 0.06;
+    game.timeSprinting -= game.timeSprinting > 0 ? 1 : 0;
+  }
+  game.scene.setFOV(glm::radians(fov));
 
   // Camera
   // Update our position of the camera
-  float acceleration = 0.008;
+
   glm::vec3 forwardStepDirection = glm::normalize(gCamera.getDirection() * glm::vec3(1, 0, 1));
   glm::vec3 cumulativeDirection = glm::vec3(0, 0, 0);
   struct WalkKeyBind { SDL_Scancode key; glm::vec3 step; };
@@ -147,6 +163,7 @@ void Input(Game &game) {
     }
   }
   Entity &player = game.entityGod.getEntity("player");
+  player.setMaxMovementSpeed(maxSpeed);
   player.step(glm::normalize(cumulativeDirection) * acceleration);
   if (state[SDL_SCANCODE_SPACE]) {
     player.jump();

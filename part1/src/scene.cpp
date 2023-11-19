@@ -215,6 +215,7 @@ Scene::Scene(int w, int h, Camera &camera): camera(camera) {
   pipeline = CreateGraphicsPipeline();
   width = w;
   height = h;
+  fov = glm::radians(45.0f);
   setupVertexArrayObject();
 }
 
@@ -336,6 +337,10 @@ void Scene::uploadUniforms() {
   }
 }
 
+void Scene::setFOV(float newFOV) {
+  fov = newFOV;
+}
+
 void Scene::predraw() {
   glEnable(GL_DEPTH_TEST);                    // NOTE: Need to enable DEPTH Test
   glEnable(GL_CULL_FACE);
@@ -368,7 +373,7 @@ void Scene::predraw() {
 
   // Projection matrix (in perspective) 
   glm::mat4 perspective = glm::perspective(
-    glm::radians(45.0f), (float) width / height, 0.1f, 20.0f);
+    fov, (float) width / height, 0.1f, 20.0f);
 
   // Retrieve our location of our perspective matrix uniform 
   GLint u_ProjectionLocation = checkedUniformLocation("u_Projection");

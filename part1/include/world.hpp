@@ -68,6 +68,7 @@ class Entity {
     Hitbox hitbox = {{1, 1, 1}};
     glm::vec3 nextStep;
     bool jumping;
+    float maxMovementSpeed = 0.05;
   public:
     Entity() {}
     Entity(std::string entityName, glm::vec3 initialPosition, float facing, glm::vec3 initialVelocity);
@@ -81,6 +82,7 @@ class Entity {
     void accelerate(glm::vec3 acceleration);
     // add acceleration of the entity by the feet for the next update
     void step(glm::vec3 impulse);
+    void setMaxMovementSpeed(float speed);
     // tell the entity to jump during the next update
     void jump();
     Hitbox getHitbox();

@@ -253,10 +253,9 @@ void Entity::update(World &world) {
   accelerate({0, -0.006, 0});
   // player motion
   //accelerate(nextStep);
-  float maxSpeed = 0.07;
   if (axisValue(nextStep)) {
     glm::vec3 walkDirection = glm::normalize(nextStep);
-    glm::vec3 cap = walkDirection * maxSpeed;
+    glm::vec3 cap = walkDirection * maxMovementSpeed;
     //glm::vec3 cap = velocityCap - velocity;
     velocity = glm::vec3(
       capTo(velocity.x, nextStep.x, abs(cap.x)),
@@ -352,6 +351,10 @@ void Entity::setVelocity(glm::vec3 to) {
 
 void Entity::accelerate(glm::vec3 acceleration) {
   velocity += acceleration;
+}
+
+void Entity::setMaxMovementSpeed(float speed) {
+  maxMovementSpeed = speed;
 }
 
 Hitbox Entity::getHitbox() {

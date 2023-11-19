@@ -120,6 +120,7 @@ class Scene {
     GLuint pipeline;
     int width, height;
     Camera &camera;
+    float fov;
     GLuint vao;
     std::unordered_map<std::string, Mesh*> meshes;
     std::unordered_map<std::string, PointLight*> lights;
@@ -139,6 +140,7 @@ class Scene {
     void deleteLight(std::string name);
     void uploadUniforms();
     void draw();
+    void setFOV(float newFOV);
 };
 
 // get the uniform location and run generic checks
