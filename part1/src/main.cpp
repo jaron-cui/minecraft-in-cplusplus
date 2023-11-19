@@ -211,17 +211,20 @@ void MainLoop(Game &game){
       if (renderThread.joinable()) {
         renderThread.join();
       }
+      game.renderGod.setOrigin(player.getPosition());
       game.renderGod.cullFarChunks(2);
       game.renderGod.uploadCache();
       // transfer rendered chunks to vbo
-      game.renderGod.setOrigin(player.getPosition());
       renderThread = std::thread(&RenderGod::update, &game.renderGod);
     }
     if (tick % generationTick == 0) {
-      // geenrationthread.join()
+      if (terrainGenerationThread.joinable()) {
+        terrainGenerationThread.join();
+      }
       game.terrainGod.setOrigin(player.getPosition());
       // geenrationthread.startandinthnewthings()
-      game.terrainGod.update();
+      // game.terrainGod.update();
+      terrainGenerationThread = std::thread(&TerrainGod::update, &game.terrainGod);
     }
 		// Draw Calls in OpenGL
 		game.scene.draw();

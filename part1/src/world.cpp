@@ -482,7 +482,7 @@ void ChunkPerlinNoiseCache::generateVectors() {
   glm::ivec3 blockCorner2 = (chunkCoordinate + 1) * CHUNK_SIZE;
   // the 2 positions in the vector grid within which
   // all chunk blocks are contained in the smallest possible volume
-  corner1 = glm::ivec3(glm::floor(blockToGridScale(blockCorner1)));
+  corner1 = glm::ivec3(glm::floor(blockToGridScale(blockCorner1))) - 1;
   corner2 = glm::ivec3(glm::ceil(blockToGridScale(blockCorner2)));
   glm::ivec3 d = corner2 - corner1;
   // std::cout << "Start and end: " << startingVector.x << " " << endingVector.x << std::endl;
@@ -642,15 +642,15 @@ void TerrainGod::update() {
         if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(World::blockToChunkCoordinate(origin))) > radius) {
           continue;
         }
-        // std::cout << "lock 1" << std::endl;
+        std::cout << "lock 1" << std::endl;
         world.divineIntervention.lock();
         if (!world.hasChunk(chunkCoordinate)) {
           world.divineIntervention.unlock();
-          // std::cout << "unlock 1" << std::endl;
+          std::cout << "unlock 1" << std::endl;
           generateChunk(chunkCoordinate, grid);
         }
         world.divineIntervention.unlock();
-        // std::cout << "unlock 1 h" << std::endl;
+        std::cout << "unlock 1 h" << std::endl;
       }
     }
   }
@@ -683,12 +683,13 @@ void TerrainGod::generateChunk(glm::ivec3 chunkCoordinate, std::unordered_map<gl
   std::vector<NoiseProfile*> noises{&noise1, &noise2};
   Chunk chunk = ChunkGenerator(chunkCoordinate, world.seed, noises).generateChunk();
   
-        // std::cout << "lock 3" << std::endl;
+        std::cout << "lock 3" << std::endl;
   world.divineIntervention.lock();
+  std::cout << "Set chunk! " << std::endl;
   world.setChunk(chunkCoordinate, chunk);
   world.divineIntervention.unlock();
   
-        // std::cout << "unlock 3" << std::endl;
+        std::cout << "unlock 3" << std::endl;
 }
 
 void TerrainGod::generateSpawn() {
