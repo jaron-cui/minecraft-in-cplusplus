@@ -186,6 +186,8 @@ void MainLoop(Game &game){
   int physicsTick = 1;
   // update rendering once per second
   int renderTick = FRAMERATE;
+  // update generation once every 5 seconds
+  int generationTick = FRAMERATE * 5;
 	// While application is running
 	while(!gQuit){
     tick += 1;
@@ -204,6 +206,10 @@ void MainLoop(Game &game){
     if (tick % renderTick == 0) {
       game.renderGod.setOrigin(player.getPosition());
       game.renderGod.update();
+    }
+    if (tick % generationTick == 0) {
+      game.terrainGod.setOrigin(player.getPosition());
+      game.terrainGod.update();
     }
 		// Draw Calls in OpenGL
 		game.scene.draw();
@@ -240,17 +246,21 @@ int main(int argc, char* args[]) {
 	InitializeProgram();
 
   Scene scene(gScreenWidth, gScreenHeight, gCamera);
-  World world;
+  World world(time(NULL));
   RenderGod renderer(world, scene);
   TerrainGod generator(world);
   EntityGod entityManager(world);
   Game game = {world, scene, generator, entityManager, renderer};
-  generator.generateSpawn();
+  //generator.generateSpawn();
   entityManager.createEntity(Player("player", {0, 0, 0}, 0, {0, 0, 0}));
-  scene.createMesh("loaded", {});
 
 	// 3. Create our graphics pipeline
 	CreateGraphicsPipeline();
+
+  generator.generateSpawn();
+  generator.setOrigin({0, 0, 0});
+  generator.setRadius(4);
+  generator.update();
 
   renderer.setOrigin({0, 0, 0});
   renderer.setRadius(2);

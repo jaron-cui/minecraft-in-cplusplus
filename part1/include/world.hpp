@@ -99,12 +99,12 @@ class Player: public Entity {
 
 class World {
   protected:
+    int seed;
     std::unordered_map<glm::ivec3, Chunk> chunks;
     std::unordered_map<std::string, Entity> entities;
   public:
-    World() {
-      std::cout << "Chunks: " << chunks.size() << std::endl;
-      std::cout << "Entities: " << entities.size() << std::endl;
+    World(int worldSeed) {
+      seed = worldSeed;
     }
     // set the chunk at specific chunk coordinates
     virtual void setChunk(glm::ivec3 chunkCoordinate, Chunk chunk);
@@ -155,9 +155,12 @@ class EntityGod: public God {
 };
 
 class TerrainGod: public God {
+  private:
+    void generateChunk(glm::ivec3 chunkCoordinate);
   public:
     TerrainGod(World &world);
     void generateSpawn();
+    void update() override;
 };
 
 class ChunkPerlinNoiseCache {
@@ -178,8 +181,44 @@ class ChunkPerlinNoiseCache {
   public:
     ChunkPerlinNoiseCache(float noiseScale, int worldSeed, glm::ivec3 chunkCoordinates);
     ~ChunkPerlinNoiseCache();
-    float sample(glm::ivec3 localCoordinate);
+    float sample(glm::ivec3 blockCoordinate);
 };
+
+// class ChunkPerlinNoiseCache2D {
+//   private:
+//     int seed;
+//     float scale;
+//     int dimensions;
+    
+//     glm::ivec2 chunkCoordinate;
+//     glm::ivec2 corner1;
+//     glm::ivec2 corner2;
+//     glm::vec2* grid;
+
+//     void generateVectors();
+//     glm::vec3 blockToGridScale(glm::ivec2 blockCoordinate) const;
+//     glm::vec3 pseudoRandomVector(glm::ivec2 vectorGridCoordinate) const;
+//     float interpolate(float x, float y, float weight) const;
+//   public:
+//     ChunkPerlinNoiseCache2D(float noiseScale, int worldSeed, glm::ivec2 chunkCoordinates);
+//     ~ChunkPerlinNoiseCache2D();
+//     float sample(glm::ivec2 localCoordinate);
+// };
+
+// ChunkPerlinNoiseCache2D::ChunkPerlinNoiseCache2D(
+//   float noiseScale, int worldSeed, glm::ivec2 chunkCoordinates) {
+//   seed = worldSeed;
+//   scale = noiseScale;
+//   chunkCoordinate = chunkCoordinates;
+// }
+
+// ~ChunkPerlinNoiseCache2D() {
+//   delete [] grid;
+// }
+
+// float sample(glm::ivec2 localCoordinate) {
+//   glm::ivec2
+// }
 
 struct NoiseProfile {
   float magnitude;
@@ -194,7 +233,6 @@ class ChunkGenerator {
     float sampleCompoundNoise(glm::ivec3 localCoordinate);
   public:
     ChunkGenerator(glm::ivec3 chunkCoordinate, int worldSeed, std::vector<NoiseProfile*> noiseProfiles);
-
     Chunk generateChunk();
 };
 

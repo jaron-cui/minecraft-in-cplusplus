@@ -423,9 +423,6 @@ Entity& EntityGod::getEntity(std::string name) {
 ** ----- TERRAIN  ----------------
 */
 
-TerrainGod::TerrainGod(World &world): God(world) {}
-
-
 ChunkPerlinNoiseCache::ChunkPerlinNoiseCache(float noiseScale, int worldSeed, glm::ivec3 chunkCoordinates) {
   seed = worldSeed;
   scale = noiseScale;
@@ -447,21 +444,21 @@ void ChunkPerlinNoiseCache::generateVectors() {
   glm::ivec3 blockCorner2 = (chunkCoordinate + 1) * CHUNK_SIZE;
   // the 2 positions in the vector grid within which
   // all chunk blocks are contained in the smallest possible volume
-  glm::ivec3 startingVector = glm::ivec3(glm::floor(blockToGridScale(blockCorner1)));
-  glm::ivec3 endingVector = glm::ivec3(glm::ceil(blockToGridScale(blockCorner2)));
-  glm::ivec3 d = endingVector - startingVector;
+  corner1 = glm::ivec3(glm::floor(blockToGridScale(blockCorner1)));
+  corner2 = glm::ivec3(glm::ceil(blockToGridScale(blockCorner2)));
+  glm::ivec3 d = corner2 - corner1;
   // std::cout << "Start and end: " << startingVector.x << " " << endingVector.x << std::endl;
   
   grid = new glm::vec3[(d.z + 1) * (d.y + 1) * (d.x + 1)];
   for (int z = 0; z <= d.z; z += 1) {
     for (int y = 0; y <= d.y; y += 1) {
       for (int x = 0; x <= d.x; x += 1) {
-        glm::ivec3 vectorGridCoordinate = startingVector + glm::ivec3(x, y, z);
+        glm::ivec3 vectorGridCoordinate = corner1 + glm::ivec3(x, y, z);
         // std::cout << "populated: " << (d.x + 1) *((d.y + 1) * z + y) + x << std::endl;
         grid[(d.x + 1) *((d.y + 1) * z + y) + x] = pseudoRandomVector(vectorGridCoordinate);
         glm::vec3 v = grid[(d.x + 1) *((d.y + 1) * z + y) + x];
-        std::cout << "I think: (" << vectorGridCoordinate.x << ", " << vectorGridCoordinate.y << ", " << vectorGridCoordinate.z << ") = <" << v.x << ", " << v.y << ", " << v.z << ">" << std::endl;
-        std::cout << "Local: (" << x << ", " << y << ", " << z << ")" << std::endl;
+        // std::cout << "I think: (" << vectorGridCoordinate.x << ", " << vectorGridCoordinate.y << ", " << vectorGridCoordinate.z << ") = <" << v.x << ", " << v.y << ", " << v.z << ">" << std::endl;
+        // std::cout << "Local: (" << x << ", " << y << ", " << z << ")" << std::endl;
       }
     }
   }
@@ -488,14 +485,14 @@ float ChunkPerlinNoiseCache::interpolate(float x, float y, float weight) const {
   return weight * weight * (3.0f - weight * 2.0f) * (y - x) + x;
 }
 
-float ChunkPerlinNoiseCache::sample(glm::ivec3 localCoordinate) {
+float ChunkPerlinNoiseCache::sample(glm::ivec3 blockCoordinate) {
   // the block coordinate in terms of the grid (scaled down)
-  glm::vec3 gridCoordinate = blockToGridScale(localCoordinate);
+  glm::vec3 gridCoordinate = blockToGridScale(blockCoordinate);
   // bounding corners of the cell - vectors lie on integers
-  glm::ivec3 loCellCorner = glm::ivec3(glm::floor(gridCoordinate));
-  glm::ivec3 hiCellCorner = glm::ivec3(glm::ceil(gridCoordinate));
+  glm::ivec3 loCellCorner = glm::ivec3(glm::floor(gridCoordinate)) - corner1;
+  glm::ivec3 hiCellCorner = glm::ivec3(glm::ceil(gridCoordinate)) - corner1;
   glm::ivec3 d = corner2 - corner1;
-  glm::vec3 offset = gridCoordinate - glm::vec3(loCellCorner);
+  glm::vec3 offset = gridCoordinate - glm::vec3(loCellCorner) - glm::vec3(corner1);
   // std::cout << "Calculating dot prods..." << std::endl;
 
   // calculate dot products and distances
@@ -508,6 +505,7 @@ float ChunkPerlinNoiseCache::sample(glm::ivec3 localCoordinate) {
         glm::ivec3 cellCorner = glm::ivec3(x, y, z);
         //distanceToCorners.push_back(glm::distance(cellCorner, gridCoordinate));
         int vectorIndex = (d.x + 1) *((d.y + 1) * z + y) + x;
+  // std::cout << "trying to index " << vectorIndex << " " << grid->length() << std::endl;
         // std::cout << "vector " << (d.x + 1) *((d.y + 1) * z + y) + x << ": " << grid.grid[vectorIndex].x << " " << grid.grid[vectorIndex].y << " " << grid.grid[vectorIndex].z << std::endl;
         dotProducts.push_back(glm::dot(grid[vectorIndex], gridCoordinate - glm::vec3(cellCorner)));
       }
@@ -537,10 +535,10 @@ ChunkGenerator::ChunkGenerator(glm::ivec3 chunkCoord, int worldSeed, std::vector
   noises = noiseProfiles;
 }
 
-float ChunkGenerator::sampleCompoundNoise(glm::ivec3 localCoordinate) {
+float ChunkGenerator::sampleCompoundNoise(glm::ivec3 blockCoordinate) {
   float total = 0;
   for (NoiseProfile* noise : noises) {
-    total += noise->sampler.sample(localCoordinate) * noise->magnitude;
+    total += noise->sampler.sample(blockCoordinate) * noise->magnitude;
   }
   return total;
 }
@@ -552,7 +550,7 @@ Chunk ChunkGenerator::generateChunk() {
     // std::cout << "layer ------------------------" << std::endl;
     for (int y = 0; y < CHUNK_SIZE; y += 1) {
       for (int x = 0; x < CHUNK_SIZE; x += 1) {
-        float noiseValue = sampleCompoundNoise(glm::ivec3(x, y, z));
+        float noiseValue = sampleCompoundNoise(glm::ivec3(x, y, z) + chunkCoordinate * CHUNK_SIZE);
         float airThreshold = 0.2 - glm::smoothstep(-15.0f, -0.5f, float(y) + chunkCoordinate.y * CHUNK_SIZE) * 0.6;
         uint8_t blockType;
         if (noiseValue > airThreshold) {
@@ -579,6 +577,34 @@ Chunk ChunkGenerator::generateChunk() {
   return chunk;
 }
 
+TerrainGod::TerrainGod(World &world): God(world) {}
+
+void TerrainGod::update() {
+  std::cout << "updating terrain!" << std::endl;
+  for (int z = -radius; z <= radius; z += 1) {
+    for (int y = -radius; y <= radius; y += 1) {
+      for (int x = -radius; x <= radius; x += 1) {
+        glm::ivec3 chunkCoordinate = glm::ivec3(x, y, z);
+        if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(World::blockToChunkCoordinate(origin))) > radius) {
+          continue;
+        }
+        if (world.hasChunk(chunkCoordinate)) {
+          continue;
+        }
+        generateChunk(chunkCoordinate);
+      }
+    }
+  }
+}
+
+void TerrainGod::generateChunk(glm::ivec3 chunkCoordinate) {
+  ChunkPerlinNoiseCache cache1 = ChunkPerlinNoiseCache(40, world.seed, chunkCoordinate);
+  ChunkPerlinNoiseCache cache2 = ChunkPerlinNoiseCache(9, world.seed, chunkCoordinate);
+  NoiseProfile noise1 = {3.0f, cache1};
+  NoiseProfile noise2 = {0.5f, cache2};
+  std::vector<NoiseProfile*> noises{&noise1, &noise2};
+  world.setChunk(chunkCoordinate, ChunkGenerator(chunkCoordinate, world.seed, noises).generateChunk());
+}
 
 void TerrainGod::generateSpawn() {
   Chunk chunk = {{{0}}};
@@ -594,12 +620,7 @@ void TerrainGod::generateSpawn() {
   for (int z = -rad; z <= rad; z += 1) {
     for (int x = -rad; x <= rad; x += 1) {
       glm::ivec3 chunkCoordinate = {x, -1, z};
-      ChunkPerlinNoiseCache cache1 = ChunkPerlinNoiseCache(40, seed, chunkCoordinate);
-      ChunkPerlinNoiseCache cache2 = ChunkPerlinNoiseCache(9, seed, chunkCoordinate);
-      NoiseProfile noise1 = {3.0f, cache1};
-      NoiseProfile noise2 = {0.5f, cache2};
-      std::vector<NoiseProfile*> noises{&noise1, &noise2};
-      world.setChunk(chunkCoordinate, ChunkGenerator(chunkCoordinate, seed, noises).generateChunk());
+      generateChunk(chunkCoordinate);
     }
   }
   world.setChunk({0, -1, 0}, chunk);
@@ -731,6 +752,10 @@ void RenderGod::update() {
           // std::cout << "rendering chunk!------------" << std::endl;
         OBJModel model = scaleOBJ(offsetOBJ(world.getChunk(chunkCoordinate).calculateChunkOBJ(), glm::vec3(chunkCoordinate * CHUNK_SIZE)), BLOCK_SCALE);
         model.mtl = {"media/textures.ppm"};
+        if (chunkCoordinate.x == 0 && chunkCoordinate.y == -1 && chunkCoordinate.z == 0) {
+          std::cout << "I set it to good!" << std::endl;
+          model.good = true;
+        }
         model.vertexNormals.push_back({0, 0, 0});
         
         scene.createMesh(Chunk::id(chunkCoordinate), model);
