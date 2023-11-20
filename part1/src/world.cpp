@@ -492,8 +492,8 @@ void ChunkPerlinNoiseCache3D::generateVectors() {
   corner2 = glm::ivec3(glm::ceil(blockToGridScale((chunkCoordinate + 1) * CHUNK_SIZE)));
   glm::ivec3 d = corner2 - corner1;
   // std::cout << "Start and end: " << startingVector.x << " " << endingVector.x << std::endl;
-  std::cout << "As chunk " << chunkCoordinate.x << " " << chunkCoordinate.y <<" " << chunkCoordinate.z << std::endl;
-  std::cout << "w scale " << scale << " corners: " << corner1.x << " " << corner1.y << " " << corner1.z << "; " << corner2.x << " " << corner2.y << " " << corner2.z << std::endl;
+  // std::cout << "As chunk " << chunkCoordinate.x << " " << chunkCoordinate.y <<" " << chunkCoordinate.z << std::endl;
+  // std::cout << "w scale " << scale << " corners: " << corner1.x << " " << corner1.y << " " << corner1.z << "; " << corner2.x << " " << corner2.y << " " << corner2.z << std::endl;
   grid = new glm::vec3[(d.z + 1) * (d.y + 1) * (d.x + 1)];
   for (int z = 0; z <= d.z; z += 1) {
     for (int y = 0; y <= d.y; y += 1) {
@@ -734,30 +734,32 @@ std::vector<RenderBlockFace> calculateChunkFaces(Chunk &chunk) {
 void addFaceVertices(OBJBuilder &builder, RenderBlockFace face) {
   glm::vec3 origin = glm::vec3(face.blockCoordinate);
   std::vector<glm::vec3> vertices(6);
+  std::vector<glm::vec3> normals(6);
   std::vector<glm::vec2> textureCoordinates(6);
   glm::vec2 blockTextureOffset = float(face.blockType - 1) * glm::vec2(1.0f, 0.0f);
 
-  int vertexDirection = -face.facing.x | face.facing.y | -face.facing.z;
-  int zero1 = face.facing.x ? face.facing.y ? 2 : 1 : 0;
-  int zero2 = (face.facing.y || face.facing.x) ? 2 : 1;
+  int vertexDirection = -(face.facing.x | face.facing.y | face.facing.z);
+  glm::ivec3 axis1, axis2;
+  otherAxes(face.facing, axis1, axis2);
   // std::cout << "zeroes: " << zero1 << ", " << zero2 << " verdir: " << vertexDirection << std::endl;
   glm::vec3 corner = {face.facing.x, face.facing.y, face.facing.z};
   // iterate through 3 indices
   for (int i = vertexDirection < 0 ? 2 : 0, _i = 0; _i < 3; i += vertexDirection, _i += 1) {
     glm::ivec2 offset1 = SQUARE_OFFSETS[TRI1[i % 3]];
     glm::ivec2 offset2 = SQUARE_OFFSETS[TRI2[i % 3]];
-    corner[zero1] = offset1.x;
-    corner[zero2] = offset1.y;
-    // std::cout << "offset index: " << i % 3 << std::endl;
-    vertices[_i] = (corner * 0.5f + origin);
+    glm::vec3 corner1 = glm::vec3(face.facing + axis1 * offset1.x + axis2 * offset1.y);
+    vertices[_i] = origin + 0.5f * corner1;
+    //normals[_i] = glm::normalize(corner1);
+    normals[_i] = face.facing;
     textureCoordinates[_i] = (blockTextureOffset + (glm::vec2(offset1) + 1.0f) * 0.5f) * .03125f;
 
-    corner[zero1] = offset2.x;
-    corner[zero2] = offset2.y;
-    vertices[3 + _i] = (corner * 0.5f + origin);
-    textureCoordinates[3 + _i] = (blockTextureOffset + (glm::vec2(offset2) + 1.0f) * 0.5f) * .03125f;
+    glm::vec3 corner2 = glm::vec3(face.facing + axis1 * offset2.x + axis2 * offset2.y);
+    vertices[_i + 3] = origin + 0.5f * corner2;
+    //normals[_i + 3] = glm::normalize(corner2);
+    normals[_i + 3] = face.facing;
+    textureCoordinates[_i + 3] = (blockTextureOffset + (glm::vec2(offset2) + 1.0f) * 0.5f) * .03125f;
   }
-  builder.addSimpleFace(vertices, textureCoordinates);
+  builder.addSimpleFace(vertices, normals, textureCoordinates);
 }
 
 // TODO: optimize chunk rendering and caching by using an intermediate representation of faces that
@@ -770,7 +772,81 @@ OBJModel Chunk::calculateChunkOBJ() {
   return builder.model;
 }
 
-RenderGod::RenderGod(World &world, Scene &openGLScene): God(world), scene(openGLScene) {}
+RenderGod::RenderGod(World &world, Scene &openGLScene): God(world), scene(openGLScene) {
+  scene.createSun("sun", {
+    glm::vec3()
+  });
+}
+
+void RenderGod::updateSun() {
+  // each hour is 60
+  const int hour = 60;
+  const int dayCycle = 24 * hour;
+  int cycleTime = world.time % dayCycle;
+  // 12:00 PM
+  int noon = 12 * hour;
+  // 20 hours of daylight
+  int daylightDuration = 16 * hour;
+  int sunrise = noon - daylightDuration / 2;
+  int sunset = noon + daylightDuration / 2;
+  // the pretty colors in the sky during sunrise and sunset
+  // will last 1 hour
+  int nightTransitionDuration = 5 * hour;
+  float sunriseProgress = glm::smoothstep(
+    float(sunrise - nightTransitionDuration / 2),
+    float(sunrise + nightTransitionDuration / 2),
+    float(cycleTime)
+  );
+  float sunsetProgress = glm::smoothstep(
+    float(sunset - nightTransitionDuration / 2),
+    float(sunset + nightTransitionDuration / 2),
+    float(cycleTime)
+  );
+  // how blue the sky should be
+  float transitionProgress = sunriseProgress - sunsetProgress;
+  // TODO: we could make the sky not just a single color,
+  //       where the side of the sky where the sun is is more colored
+  glm::vec3 nightSky = glm::vec3(4, 7, 13) / 256.0f;
+  glm::vec3 nightLight = glm::vec3(0, 0, 0);// glm::vec3(87, 80, 107) / 256.0f;
+  glm::vec3 transitionSky = glm::vec3(255, 155, 48) / 256.0f * 0.6f;
+  glm::vec3 transitionLight = glm::vec3(255, 211, 150) / 256.0f * 0.6f;
+  glm::vec3 daySky = glm::vec3(117, 156, 235) / 256.0f;
+  glm::vec3 noonSky = glm::vec3(176, 202, 255) / 256.0f;
+  glm::vec3 dayLight = glm::vec3(1, 1, 1) * 1.0f;
+  float transitionRad = (transitionProgress - 0.5f) * 2.0f;
+  glm::vec3 skyColor;
+  glm::vec3 lightColor;
+  if (transitionRad < 0.0f) {
+    skyColor = -transitionRad * nightSky + (transitionRad + 1) * transitionSky;
+    lightColor = -transitionRad * nightLight + (transitionRad + 1) * transitionLight;
+  } else {
+    float noonness = 1 - float(abs(noon - cycleTime)) / daylightDuration * 2.0f;
+    skyColor = transitionRad * ((1 - noonness) * daySky + noonness * noonSky) + (1 - transitionRad) * transitionSky;
+    lightColor = transitionRad * (dayLight * (noonness * 0.2f + 0.8f)) + (1 - transitionRad) * transitionLight;
+  }
+  // std::cout << "trans progress: " << transitionProgress << " transitionRad: " << transitionRad << std::endl;
+  std::cout << "day cycle: " << cycleTime << std::endl;
+  int nightTimeDuration = dayCycle - daylightDuration;
+  float degrees;
+  if (cycleTime < sunrise) {
+    float slope = 180.0f / nightTimeDuration;
+    float intercept = (dayCycle - sunset) * slope + 180.0f;
+    degrees = slope * cycleTime + intercept;
+  } else if (cycleTime < dayCycle && cycleTime >= sunset) {
+    float slope = 180.0f / nightTimeDuration;
+    degrees = slope * (cycleTime - sunset) + 180.0f;
+  } else {
+    float slope = 180.0f / daylightDuration;
+    degrees = (cycleTime - sunrise) * slope;
+  }
+  float rads = glm::radians(degrees);
+  // 0.2f is a little extra tilt
+  glm::vec3 sunDirection = glm::normalize(glm::vec3(std::cos(rads), std::sin(rads), 0.2f));
+  // TODO: set sun visual somehow
+  scene.getSun("sun")->color = lightColor;
+  scene.getSun("sun")->direction = sunDirection;
+  scene.setBackground(skyColor);
+}
 
 void RenderGod::uploadCache(int max) {
   world.divineIntervention.lock();

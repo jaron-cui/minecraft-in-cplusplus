@@ -72,6 +72,18 @@ struct OBJBuilder {
     return it - v.begin();
   }
 
+  int addNormal(glm::vec3 normal) {
+    std::vector<glm::vec3> &v = model.vertexNormals;
+    auto it = std::find(v.begin(), v.end(), normal);
+    // if vertex does not already exit, insert it
+    if (it == v.end()) {
+      v.push_back(normal);
+      return v.size() - 1;
+    }
+    // if vertex does exist, return existing index
+    return it - v.begin();
+  }
+
   int addTextureCoordinate(glm::vec2 textureCoordinate) {
     std::vector<glm::vec2> &v = model.textureCoordinates;
     auto it = std::find(v.begin(), v.end(), textureCoordinate);
@@ -84,10 +96,10 @@ struct OBJBuilder {
     return it - v.begin();
   }
 
-  void addSimpleFace(std::vector<glm::vec3> vertices, std::vector<glm::vec2> textureCoordinates) {
+  void addSimpleFace(std::vector<glm::vec3> vertices, std::vector<glm::vec3> normals, std::vector<glm::vec2> textureCoordinates) {
     std::vector<VertexDescriptor> vertexDescriptors;
     for (int i = 0; i < vertices.size(); i += 1) {
-      vertexDescriptors.push_back({addVertex(vertices[i]), 0, addTextureCoordinate(textureCoordinates[i])});
+      vertexDescriptors.push_back({addVertex(vertices[i]), addNormal(normals[i]), addTextureCoordinate(textureCoordinates[i])});
     }
     model.faces.push_back({vertexDescriptors});
   }

@@ -182,6 +182,8 @@ void MainLoop(Game &game){
     SDL_WarpMouseInWindow(gGraphicsApplicationWindow,gScreenWidth/2,gScreenHeight/2);
     SDL_SetRelativeMouseMode(SDL_TRUE);
   int tick = 0;
+  // when to increment time by a minute
+  int minuteTick = FRAMERATE / 20;
   // process physics once per tick
   int physicsTick = 1;
   // update rendering once every four seconds
@@ -199,11 +201,17 @@ void MainLoop(Game &game){
     const auto frameEnd = std::chrono::steady_clock::now() + std::chrono::milliseconds(FRAMETIME_MS);
 		// Handle Input
 		Input(game);
-		// Setup anything (i.e. OpenGL State) that needs to take place before draw calls
+		// update camera
+    game.world.divineIntervention.lock();
     Entity &player = game.entityGod.getEntity("player");
     glm::vec3 cameraOffset = glm::vec3(POSY) * player.getHitbox().dimensions.y * 0.35333f;
     glm::vec3 pos = (player.getPosition() + cameraOffset) * BLOCK_SCALE;
     gCamera.SetCameraEyePosition(pos.x, pos.y, pos.z);
+    game.renderGod.updateSun();
+    if (tick % minuteTick == 0) {
+      game.world.time += 1;
+    }
+    game.world.divineIntervention.unlock();
 
     if (tick % physicsTick == 0) {
       game.entityGod.update();
@@ -279,9 +287,10 @@ int main(int argc, char* args[]) {
 	// 3. Create our graphics pipeline
 	CreateGraphicsPipeline();
 
+  world.time = 240;
   generator.generateSpawn();
   generator.setOrigin({0, 0, 0});
-  generator.setRadius(6);
+  generator.setRadius(2);
   generator.update();
 
   renderer.setOrigin({0, 0, 0});

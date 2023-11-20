@@ -113,6 +113,8 @@ class World {
     std::unordered_map<glm::ivec3, Chunk> chunks;
     std::unordered_map<std::string, Entity> entities;
   public:
+    // the time starts at midnight and 1 = 1 minute
+    int time;
     std::mutex divineIntervention;
     World(int worldSeed) {
       seed = worldSeed;
@@ -267,6 +269,7 @@ class RenderGod: public God {
     // allowance indicates how far chunks beyond the render radius
     // are allowed to stay before they get culled from memory
     void cullFarChunks(int allowance);
+    void updateSun();
 };
 
 struct RenderBlockFace {

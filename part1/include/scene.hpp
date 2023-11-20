@@ -147,20 +147,26 @@ class Mesh {
 };
 
 // represents a point light
-struct PointLight{
-    glm::vec3 lightColor;
-    glm::vec3 lightPos;
-    float ambientIntensity;
+struct PointLight {
+  glm::vec3 lightColor;
+  glm::vec3 lightPos;
+  float ambientIntensity;
 
-    float specularStrength;
+  float specularStrength;
 
-    float constant;
-    float linear;
-    float quadratic;
+  float constant;
+  float linear;
+  float quadratic;
 
-    glm::vec3 ambient;
-    glm::vec3 diffuse;
-    glm::vec3 specular;
+  glm::vec3 ambient;
+  glm::vec3 diffuse;
+  glm::vec3 specular;
+};
+
+struct Sun {
+  glm::vec3 color;
+  glm::vec3 direction;
+  // TODO: could add some specular/ambient field here too
 };
 
 class Scene {
@@ -170,17 +176,21 @@ class Scene {
     Camera &camera;
     float fov;
     GLuint vao;
+    glm::vec3 background;
     std::unordered_map<std::string, Mesh*> meshes;
     std::unordered_map<std::string, PointLight*> lights;
+    std::unordered_map<std::string, Sun*> suns;
     std::unordered_map<std::string, Texture*> textures;
     std::unordered_set<std::string> hiddenMeshes;
     void setupVertexArrayObject();
     void predraw();
     GLint checkedUniformLocation(std::string uniformName);
     void setPointLightUniform(PointLight light, int index);
+    void setSunUniform(Sun sun, int index);
   public:
     Scene(int width, int height, Camera &camera);
     ~Scene();
+    void setBackground(glm::vec3 color);
     bool createMesh(std::string name, OBJModel obj);
     bool createMeshFromCache(std::string name, RenderCache cache);
     void hideMesh(std::string name);
@@ -189,7 +199,9 @@ class Scene {
     Mesh* getMesh(std::string name);
     void deleteMesh(std::string name);
     bool createLight(std::string name, PointLight light);
+    bool createSun(std::string name, Sun sun);
     PointLight* getLight(std::string name);
+    Sun* getSun(std::string name);
     void deleteLight(std::string name);
     void uploadUniforms();
     void draw();

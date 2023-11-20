@@ -329,8 +329,22 @@ bool Scene::createLight(std::string name, PointLight data) {
   return true;
 }
 
+bool Scene::createSun(std::string name, Sun data) {
+  if (suns.find(name) != suns.end()) {
+    return false;
+  }
+  Sun* sun = (Sun*) malloc(sizeof(Sun));
+  memcpy(sun, &data, sizeof(Sun));
+  suns[name] = sun;
+  return true;
+}
+
 PointLight* Scene::getLight(std::string name) {
   return lights[name];
+}
+
+Sun* Scene::getSun(std::string name) {
+  return suns[name];
 }
 
 void Scene::deleteLight(std::string name) {
@@ -339,6 +353,10 @@ void Scene::deleteLight(std::string name) {
   }
   delete &lights[name];
   lights.erase(name);
+}
+
+void Scene::setBackground(glm::vec3 color) {
+  background = color;
 }
 
 // get the uniform location and run generic checks
@@ -369,10 +387,25 @@ void Scene::setPointLightUniform(PointLight light, int index) {
   glUniform1f(u_specularStrength, light.specularStrength);
 }
 
+void Scene::setSunUniform(Sun sun, int index) {
+  std::string location = "u_suns[" + std::to_string(index) + "].";
+
+  GLint u_color = checkedUniformLocation(location + "color");
+  glUniform3fv(u_color, 1, &sun.color[0]);
+
+  GLint u_direction = checkedUniformLocation(location + "direction");
+  glUniform3fv(u_direction, 1, &sun.direction[0]);
+}
+
 void Scene::uploadUniforms() {
   int count = 0;
   for (auto light : lights) {
     setPointLightUniform(*light.second, count);
+    count += 1;
+  }
+  count = 0;
+  for (auto sun : suns) {
+    setSunUniform(*sun.second, count);
     count += 1;
   }
 }
@@ -391,7 +424,7 @@ void Scene::predraw() {
   // Initialize clear color
   // This is the background of the screen.
   glViewport(0, 0, width, height);
-  glClearColor( 0.51f, 0.73f, 0.91f, 1.f );
+  glClearColor(background.r, background.g, background.b, 1.f);
 
   //Clear color buffer and Depth Buffer
   glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
