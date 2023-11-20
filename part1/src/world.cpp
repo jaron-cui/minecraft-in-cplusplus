@@ -146,8 +146,11 @@ bool checkDirectionForCollision(Hitbox hitbox, glm::vec3 origin, glm::vec3 veloc
     for (int row = leftBound; row < rightBound + 1; row += 1) {
       glm::ivec3 blockCoordinate = axisPosition * axis + column * up + row * right;
       glm::ivec3 surfaceCoordinate = blockCoordinate - axis * axisDirection;
-      if (world.hasBlock(blockCoordinate) && world.getBlock(blockCoordinate) != AIR
-        && (!world.hasBlock(surfaceCoordinate) || world.getBlock(surfaceCoordinate) == AIR)) {
+      if (!world.hasBlock(blockCoordinate)) {
+        return true;
+      }
+      if (world.hasBlock(blockCoordinate) && world.getBlock(blockCoordinate) != BLOCKTYPE_AIR
+        && (!world.hasBlock(surfaceCoordinate) || world.getBlock(surfaceCoordinate) == BLOCKTYPE_AIR)) {
         // std::cout << "I FOUND IT, I FOUND A SOLID BLOCK: " << blockCoordinate.x << " " << blockCoordinate.y << " " << blockCoordinate.z << " block: " << world.getBlock(blockCoordinate)<< std::endl;
         // std::cout << "H: (" << blockCoordinate.x << ", " << blockCoordinate.y << ", " << blockCoordinate.z << ") - <" << axis.x << ", " << axis.y << ", " << axis.z << ">" << std::endl;
         // std::cout << "I: L: " << axisPosition << " S[" << bottomBound << ", " << topBound << "]; T[" << leftBound << ", " << rightBound << "]" << std::endl;
@@ -606,29 +609,47 @@ float ChunkGenerator::sampleCompoundNoise(glm::ivec3 blockCoordinate) {
 Chunk ChunkGenerator::generateChunk() {
   Chunk chunk;
   // std::cout << "Generating chunk..." << std::endl;
+  // TODO:
+  // 1. Larger context noise cache for inter-chunkiness
+  // 2. Perhaps a chunk baking range for polishing once further chunks are generated
+  //  - Lets us make cross-chunk structures like trees and buildings
+  //  - Lets us check for air exposure, add detail like grass and... mobs?
+  // 3. 2D perlin noise for:
+  //  - Ground level
+  //  - Ruggedness
+  //  - Biome
+  //    > Temperature
+  //    > Humidity
+  // 4. Random noise for:
+  //  - 3D "seeding" blocks - where we can begin generating
+  //         small structures like trees, ores, pumpkins
+  // (idea?) 5. Random per-chunk value where if above a certain threshold, finds
+  //  - all connected chunks above the threshold and generates a large-scale
+  //    structure if there are enough connected chunks to fit it?
+  // (idea?) 6. Maybe a better idea - some way to find random points isometrically
+  //  - within a certain range
   for (int z = 0; z < CHUNK_SIZE; z += 1) {
     // std::cout << "layer ------------------------" << std::endl;
     for (int y = 0; y < CHUNK_SIZE; y += 1) {
       for (int x = 0; x < CHUNK_SIZE; x += 1) {
         glm::ivec3 blockCoordinate = glm::ivec3(x, y, z) + chunkCoordinate * CHUNK_SIZE;
         float noiseValue = sampleCompoundNoise(blockCoordinate);
-        float airThreshold = 0.6 - glm::smoothstep(-15.0f, -0.5f, float(blockCoordinate.y)) * 0.8;
+        float seaLevel = -10;
+        float groundLevel = -6;
+        float dirtDepth = groundLevel - 7;
+        float airiness = glm::smoothstep(groundLevel - 16, groundLevel + 16, float(blockCoordinate.y));
+        // underground will be 20% air, aboveground will be 70% air
+        float airThreshold = -0.6 + airiness * 1.4;
+        float dirtThreshold = airThreshold + 0.2;
         uint8_t blockType;
-        if (noiseValue > airThreshold) {
+        if (noiseValue < airThreshold) {
           // std::cout << "  ";
-          blockType = AIR;
-        } else if (noiseValue > -.4) {
+          blockType = BLOCKTYPE_AIR;
+        } else if (noiseValue >= airThreshold && noiseValue < dirtThreshold && blockCoordinate.y >= dirtDepth) {
           // std::cout << "░░";
-          blockType = 1;
-        } else if (noiseValue > -0.6) {
-          // std::cout << "▒▒";
-          blockType = 2;
-        } else if (noiseValue > -0.8) {
-          // std::cout << "▓▓";
-          blockType = 3;
+          blockType = BLOCKTYPE_DIRT;
         } else {
-          // std::cout << "██";
-          blockType = 4;
+          blockType = BLOCKTYPE_STONE;
         }
         chunk.blocks[z][y][x] = blockType;
       }
@@ -643,9 +664,11 @@ TerrainGod::TerrainGod(World &world): God(world) {}
 void TerrainGod::update() {
   std::unordered_map<glm::ivec3, glm::vec3> grid;
   std::cout << "updating terrain!" << std::endl;
-  for (int z = -radius; z <= radius; z += 1) {
-    for (int y = -radius; y <= radius; y += 1) {
-      for (int x = -radius; x <= radius; x += 1) {
+  glm::ivec3 lo = World::blockToChunkCoordinate(origin) - radius;
+  glm::ivec3 hi = World::blockToChunkCoordinate(origin) + radius;
+  for (int z = lo.z; z <= hi.z; z += 1) {
+    for (int y = std::max(lo.y, -2); y <= std::min(hi.y, 2); y += 1) {
+      for (int x = lo.x; x <= hi.x; x += 1) {
         glm::ivec3 chunkCoordinate = glm::ivec3(x, y, z);
         if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(World::blockToChunkCoordinate(origin))) > radius) {
           continue;
@@ -686,8 +709,8 @@ void TerrainGod::generateChunk(glm::ivec3 chunkCoordinate, std::unordered_map<gl
     }
   }
 
-  NoiseProfile noise1 = {3.0f, cache1};
-  NoiseProfile noise2 = {0.5f, cache2};
+  NoiseProfile noise1 = {0.7f, cache1};
+  NoiseProfile noise2 = {0.3f, cache2};
   std::vector<NoiseProfile*> noises{&noise1, &noise2};
   Chunk chunk = ChunkGenerator(chunkCoordinate, world.seed, noises).generateChunk();
   
@@ -702,11 +725,11 @@ void TerrainGod::generateChunk(glm::ivec3 chunkCoordinate, std::unordered_map<gl
 
 void TerrainGod::generateSpawn() {
   Chunk chunk = {{{0}}};
-  chunk.blocks[5][14][5] = STONE;
+  chunk.blocks[5][14][5] = BLOCKTYPE_STONE;
   for (int z = 0; z < CHUNK_SIZE; z += 1) {
     for (int x = 0; x < CHUNK_SIZE; x += 1) {
       int y = 12;//x / 3 + 9;
-      chunk.blocks[z][y][x] = STONE;
+      chunk.blocks[z][y][x] = BLOCKTYPE_STONE;
     }
   }
   update();
@@ -734,14 +757,14 @@ std::vector<RenderBlockFace> calculateChunkFaces(Chunk &chunk) {
         // for a given block coordinate
         glm::ivec3 blockCoordinate = {x, y, z};
         // if it is air, no faces needed
-        if (chunk.getBlock(blockCoordinate) == AIR) {
+        if (chunk.getBlock(blockCoordinate) == BLOCKTYPE_AIR) {
           continue;
         }
         // if it is solid, then add faces for each of the air-facing sides
         for (glm::ivec3 direction : ORTHO_DIRS) {
           // don't add a face if the adjacent block is out of bounds or it is not air
           glm::ivec3 neighbor = blockCoordinate + direction;
-          if (Chunk::inBounds(neighbor) && chunk.getBlock(neighbor) != AIR) {
+          if (Chunk::inBounds(neighbor) && chunk.getBlock(neighbor) != BLOCKTYPE_AIR) {
             continue;
           }
           // add the face represented by a block coordinate and a direction

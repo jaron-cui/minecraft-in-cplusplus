@@ -12,8 +12,18 @@ const int CHUNK_SIZE = 16;
 
 const float BLOCK_SCALE = 0.5;
 
-const char AIR = 0;
-const char STONE = 1;
+const uint8_t BLOCKTYPE_AIR = 0;
+const uint8_t BLOCKTYPE_STONE = 1;
+const uint8_t BLOCKTYPE_DIRT = 2;
+const uint8_t BLOCKTYPE_GRASS = 3;
+const uint8_t BLOCKTYPE_WOOD = 4;
+const uint8_t BLOCKTYPE_LEAVES = 5;
+const uint8_t BLOCKTYPE_SAND = 7;
+
+const uint8_t BLOCKTYPE_BRICK = 8;
+const uint8_t BLOCKTYPE_PLANKS = 9;
+
+const uint8_t BLOCKTYPE_WATER = 16;
 
 // represents orthogonal directions along the x, y, or z axis
 const glm::ivec3 POSX = {1, 0, 0};
@@ -34,7 +44,7 @@ const int TRI2[3] = {1, 3, 2};
 
 // chunks are cubic pieces of the world composed of multiple blocks
 struct Chunk {
-  char blocks[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
+  uint8_t blocks[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
   std::unordered_set<std::string> entityNames;
 
   OBJModel calculateChunkOBJ();
@@ -44,7 +54,7 @@ struct Chunk {
     int z = localBlockCoordinate.z;
     return (x >=0 && x < CHUNK_SIZE) && (y >=0 && y < CHUNK_SIZE) && (z >=0 && z < CHUNK_SIZE);
   }
-  char getBlock(glm::ivec3 localBlockCoordinate) {
+  uint8_t getBlock(glm::ivec3 localBlockCoordinate) {
     return blocks[localBlockCoordinate.z][localBlockCoordinate.y][localBlockCoordinate.x];
   }
   static std::string id(glm::ivec3 chunkCoordinate) {

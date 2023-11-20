@@ -187,7 +187,7 @@ void MainLoop(Game &game){
   // update rendering once every four seconds
   int buildNewChunkMeshesTick = FRAMERATE / 4;
   // upload a few meshes every now and then
-  int uploadCacheTick = FRAMERATE / 20;
+  int uploadCacheTick = 1;
   // update generation once every 2 seconds
   int generationTick = FRAMERATE * 2;
 	// While application is running
@@ -281,11 +281,11 @@ int main(int argc, char* args[]) {
 
   generator.generateSpawn();
   generator.setOrigin({0, 0, 0});
-  generator.setRadius(4);
+  generator.setRadius(6);
   generator.update();
 
   renderer.setOrigin({0, 0, 0});
-  renderer.setRadius(2);
+  renderer.setRadius(4);
   renderer.update();
 	// 4. Call the main application loop
 	MainLoop(game);
