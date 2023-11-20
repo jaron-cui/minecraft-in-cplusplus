@@ -391,7 +391,7 @@ void Scene::predraw() {
   // Initialize clear color
   // This is the background of the screen.
   glViewport(0, 0, width, height);
-  glClearColor( 0.1f, 4.f, 7.f, 1.f );
+  glClearColor( 0.51f, 0.73f, 0.91f, 1.f );
 
   //Clear color buffer and Depth Buffer
   glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
@@ -413,7 +413,7 @@ void Scene::predraw() {
 
   // Projection matrix (in perspective) 
   glm::mat4 perspective = glm::perspective(
-    fov, (float) width / height, 0.1f, 20.0f);
+    fov, (float) width / height, 0.1f, 40.0f);
 
   // Retrieve our location of our perspective matrix uniform 
   GLint u_ProjectionLocation = checkedUniformLocation("u_Projection");
