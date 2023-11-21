@@ -268,7 +268,7 @@ class RenderGod: public God {
     void uploadCache(int max);
     // allowance indicates how far chunks beyond the render radius
     // are allowed to stay before they get culled from memory
-    void cullFarChunks(int allowance);
+    void cullFarChunks(int allowance, int max);
     void updateSun();
 };
 

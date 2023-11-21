@@ -638,7 +638,7 @@ TerrainGod::TerrainGod(World &world): God(world) {}
 
 void TerrainGod::update() {
   std::unordered_map<glm::ivec3, glm::vec3> grid;
-  std::cout << "updating terrain!" << std::endl;
+  // std::cout << "updating terrain!" << std::endl;
   glm::ivec3 lo = World::blockToChunkCoordinate(origin) - radius;
   glm::ivec3 hi = World::blockToChunkCoordinate(origin) + radius;
   for (int z = lo.z; z <= hi.z; z += 1) {
@@ -865,14 +865,18 @@ void RenderGod::uploadCache(int max) {
   world.divineIntervention.unlock();
 }
 
-void RenderGod::cullFarChunks(int allowance) {
+void RenderGod::cullFarChunks(int allowance, int max) {
   glm::ivec3 originChunk = World::blockToChunkCoordinate(origin);
   for (glm::ivec3 chunkCoordinate : realm) {
+    if (max == 0) {
+      break;
+    }
     if (glm::distance(glm::vec3(chunkCoordinate), glm::vec3(originChunk)) <= radius + allowance) {
       continue;
     }
     scene.deleteMesh(Chunk::id(chunkCoordinate));
     realm.erase(chunkCoordinate);
+    max -= 1;
   }
 }
 

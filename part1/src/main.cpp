@@ -170,6 +170,20 @@ void Input(Game &game) {
   }
 }
 
+void generateTerrainForever(TerrainGod* terrainGod, bool* stop) {
+  while (!*stop) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    terrainGod->update();
+  }
+}
+
+void updateRenderingForever(RenderGod* renderGod, bool* stop) {
+  while (!*stop) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    renderGod->update();
+  }
+}
+
 /**
 * Main Application Loop
 * This is an infinite loop in our graphics application
@@ -187,14 +201,14 @@ void MainLoop(Game &game){
   // process physics once per tick
   int physicsTick = 1;
   // update rendering once every four seconds
-  int buildNewChunkMeshesTick = FRAMERATE / 4;
+  int cullFarChunksTick = FRAMERATE / 4;
   // upload a few meshes every now and then
   int uploadCacheTick = 1;
   // update generation once every 2 seconds
   int generationTick = FRAMERATE * 2;
 	// While application is running
-  std::thread renderThread;
-  std::thread terrainGenerationThread;
+  std::thread renderThread(&updateRenderingForever, &game.renderGod, &gQuit);
+  std::thread terrainGenerationThread(&generateTerrainForever, &game.terrainGod, &gQuit);
   // thread geenrationthread;
 	while(!gQuit){
     tick += 1;
@@ -211,6 +225,7 @@ void MainLoop(Game &game){
     if (tick % minuteTick == 0) {
       game.world.time += 1;
     }
+    game.renderGod.cullFarChunks(2, 1);
     game.world.divineIntervention.unlock();
 
     if (tick % physicsTick == 0) {
@@ -219,25 +234,21 @@ void MainLoop(Game &game){
     if (tick % uploadCacheTick == 0) {
       game.renderGod.uploadCache(1);
     }
-    if (tick % buildNewChunkMeshesTick == 0) {
+    if (tick % cullFarChunksTick == 0) {
       // wrap up rendering stuff
-      if (renderThread.joinable()) {
-        renderThread.join();
-      }
-      game.renderGod.setOrigin(player.getPosition());
-      game.renderGod.cullFarChunks(2);
+      // if (renderThread.joinable()) {
+      //   renderThread.join();
+      // }
       // transfer rendered chunks to vbo
-      renderThread = std::thread(&RenderGod::update, &game.renderGod);
+      // renderThread = std::thread(&RenderGod::update, &game.renderGod);
     }
-    if (tick % generationTick == 0) {
-      if (terrainGenerationThread.joinable()) {
-        terrainGenerationThread.join();
-      }
-      game.terrainGod.setOrigin(player.getPosition());
-      // geenrationthread.startandinthnewthings()
-      // game.terrainGod.update();
-      terrainGenerationThread = std::thread(&TerrainGod::update, &game.terrainGod);
-    }
+    game.renderGod.setOrigin(player.getPosition());
+    game.terrainGod.setOrigin(player.getPosition());
+    // if (tick % generationTick == 0) {
+    //   // geenrationthread.startandinthnewthings()
+    //   // game.terrainGod.update();
+    //   // terrainGenerationThread = std::thread(&TerrainGod::update, &game.terrainGod);
+    // }
 		// Draw Calls in OpenGL
 		game.scene.draw();
 		//Update screen of our specified window
@@ -246,6 +257,9 @@ void MainLoop(Game &game){
 	}
   if (renderThread.joinable()) {
     renderThread.join();
+  }
+  if (terrainGenerationThread.joinable()) {
+    terrainGenerationThread.join();
   }
 }
 
