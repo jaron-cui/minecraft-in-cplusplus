@@ -197,11 +197,11 @@ void MainLoop(Game &game){
     SDL_SetRelativeMouseMode(SDL_TRUE);
   int tick = 0;
   // when to increment time by a minute
-  int minuteTick = FRAMERATE / 20;
+  int minuteTick = FRAMERATE / 2;
   // process physics once per tick
   int physicsTick = 1;
   // update rendering once every four seconds
-  int cullFarChunksTick = FRAMERATE / 4;
+  int cullFarChunksTick = FRAMERATE / 20;
   // upload a few meshes every now and then
   int uploadCacheTick = 1;
   // update generation once every 2 seconds

@@ -676,11 +676,11 @@ void TerrainGod::generateChunk(glm::ivec3 chunkCoordinate, std::unordered_map<gl
 
 void TerrainGod::generateSpawn() {
   Chunk chunk = {{{0}}};
-  chunk.blocks[5][14][5] = BLOCKTYPE_STONE;
+  chunk.blocks[5][14][5] = BLOCKTYPE_LEAVES;
   for (int z = 0; z < CHUNK_SIZE; z += 1) {
     for (int x = 0; x < CHUNK_SIZE; x += 1) {
       int y = 12;//x / 3 + 9;
-      chunk.blocks[z][y][x] = BLOCKTYPE_STONE;
+      chunk.blocks[z][y][x] = BLOCKTYPE_BRICK;
     }
   }
   update();
