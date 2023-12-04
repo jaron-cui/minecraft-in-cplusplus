@@ -1,23 +1,23 @@
-*TODO*: Please edit the following information in your final project
+## Title: 'Minecraft' Reengineered in C++
 
-## Title: Edit this line -- Put your 'title' of your project here
+## YouTube/Dropbox/Drive Link: https://youtu.be/mdiX9hOx4EM
 
-## YouTube/Dropbox/Drive Link: Edit this line -- Put your link to your video(Preferably on YouTube) here (see deliverables).
-
-## Edit this line: Put a few screenshots of your project here (see deliverables).
-
+## Screenshots
+<img src="./part1/media/thumbnail.png">
+<img src="./part1/media/cave.jpg">
+<img src="./part1/media/textures.png">
 
 * Name and partners name(At most teams of 2 folks total)
-  * Team member 1: *edit this*
-  * Team member 2: *edit this*
-* How many hours did it take you to complete this final project? 
+  * Team member 1: Jaron Cui
+* How many hours did it take you to complete this final project?
+  - Somewhere between 24-36 hours total - I spent all my waking hours for 3 straight days.
 * Did you collaborate or share ideas with any other students/TAs/Professors?
+  - No.
 * Did you use any external resources? 
   * Note it is fair to utilize some tutorials--cite them here. You **must** add your own personal touch however!
-  * *edit this*
-  * *edit this*
-  * *edit this*
+    - https://en.wikipedia.org/wiki/Perlin_noise
   * (Optional) What was the most interesting part of the Final Assignment? How could the instructor improve the final project?
+    - I found it most interesting to come up with original algorithms for physics simulation and to design textures.
 
 ### Rubric
 
