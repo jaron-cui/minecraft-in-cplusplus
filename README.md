@@ -6,6 +6,7 @@
 <img src="./part1/media/thumbnail.png">
 <img src="./part1/media/cave.jpg">
 <img src="./part1/media/textures.png">
+<img src="./part1/media/gods.png">
 
 * Name and partners name(At most teams of 2 folks total)
   * Team member 1: Jaron Cui
