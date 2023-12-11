@@ -1,4 +1,4 @@
-## Title: 'Minecraft' Reengineered in C++
+## Minecraft Reengineered in C++
 
 ## YouTube Link: https://youtu.be/mdiX9hOx4EM
 [![Watch on YouTube](https://i1.ytimg.com/vi/H6CSRfh5ud8/hqdefault.jpg)](http://www.youtube.com/watch?v=H6CSRfh5ud8Y "CS5310 Final Project")
