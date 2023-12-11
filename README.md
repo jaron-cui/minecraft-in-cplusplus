@@ -1,9 +1,7 @@
 ## Title: 'Minecraft' Reengineered in C++
 
 ## YouTube/Dropbox/Drive Link: https://youtu.be/mdiX9hOx4EM
-<iframe width="420" height="315"
-src="https://youtu.be/H6CSRfh5ud8Y">
-</iframe> 
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/H6CSRfh5ud8Y/0.jpg)](http://www.youtube.com/watch?v=H6CSRfh5ud8Y "CS5310 Final Project")
 
 ## Screenshots
 <img src="./media/thumbnail.png">
